@@ -227,7 +227,7 @@ for policy in policy-routing-*; do
 	  ip route add $a table $policy
 	done
 	while ip rule | grep 'lookup '$policy; do
-	  ip rule del fwmark $key table $policy:wq:wq
+	  ip rule del fwmark $key table $policy
 	done
 	ip rule add fwmark $key table $policy
 	ip route flush cache
