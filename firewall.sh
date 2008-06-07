@@ -97,10 +97,6 @@ for iface in interface-*; do
   echo "-A POSTROUTING -o $iface -j post-$iface" >> $FILEnat
 done
 
-echo "Loopback Interface is fine"
-echo "-A OUTPUT	-j ACCEPT -o lo" >> $FILEfilter
-echo "-A INPUT	-j ACCEPT -i lo" >> $FILEfilter
-
 echo "Adding DNAT"
 for iface in interface-*; do
   iface=${iface#interface-}
