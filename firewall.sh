@@ -210,8 +210,8 @@ done
 
 
 echo Policy Routing
-echo "-I PREROUTING -j MARK --set-mark 0 >> $FILEmangle
-echo "-I OUTPUT -j MARK --set-mark 0 >> $FILEmangle
+echo "-I PREROUTING -j MARK --set-mark 0" >> $FILEmangle
+echo "-I OUTPUT -j MARK --set-mark 0" >> $FILEmangle
 for policy in policy-routing-*; do
   policy=${policy#policy-routing-}
   [ -e policy-routing-$policy/comment ] && cat policy-routing-$policy/comment | sed 's/^/ /'
