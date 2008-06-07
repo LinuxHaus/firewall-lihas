@@ -220,7 +220,7 @@ for policy in policy-routing-*; do
     cat policy-routing-$policy/gateway | sed '/^[ \t]*$/d; /^#/d' |
     while read type interface; do
       if [ $type == "PPP" ]; then
-        ip route flush table policy
+        ip route flush table $policy
 	ip route ls |
 	sed 's/^default.*/default dev '$interface'/' |
 	while read a; do
