@@ -269,18 +269,23 @@ echo *nat >> $FILE
 cat $FILEnat >> $FILE
 echo COMMIT >> $FILE
 
-iptables-restore < $FILE
-
 }
 
 do_stop () {
   iptables-restore < /etc/firewall.lihas.d/iptables-accept
 }
 
+FILE=/tmp/iptables
+
 case "$1" in
+  test)
+        do_start
+	echo "Check $FILE to see what it would look like"
+	;;
   start)
         [ "$VERBOSE" != no ] && log_daemon_msg "Starting $DESC" "$NAME"
         do_start
+        iptables-restore < $FILE
         case "$?" in
                 0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
                 2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
@@ -301,6 +306,7 @@ case "$1" in
         #
         log_daemon_msg "Reloading $DESC" "$NAME"
         do_start
+        iptables-restore < $FILE
         log_end_msg $?
         ;;
   restart|force-reload)
@@ -313,6 +319,7 @@ case "$1" in
         case "$?" in
           0|1)
                 do_start
+                iptables-restore < $FILE
                 case "$?" in
                         0) log_end_msg 0 ;;
                         1) log_end_msg 1 ;; # Old process is still running
