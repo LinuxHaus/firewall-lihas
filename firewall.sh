@@ -54,7 +54,7 @@ FILE=/tmp/iptables
 FILEfilter=/tmp/iptables-filter
 FILEnat=/tmp/iptables-nat
 FILEmangle=/tmp/iptables-mangle
-rm $FILEfilter $FILEnat $FILEmangle
+rm $FILE $FILEfilter $FILEnat $FILEmangle
 
 echo "Allowing all established Connections"
 for chain in INPUT OUTPUT FORWARD; do
