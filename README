@@ -1,0 +1,44 @@
+- 1 Verzeichnis pro Interface nach dem Muster
+    interface-NAME
+  - interface-NAME/comment 
+    Kommentar, der einfach nur ausgedruckt wird
+  - interface-NAME/network 
+    Ein Netzwerk pro Zeile, das an diesem Interface haengt, z.B. 192.168.1.0/25
+  - interface-NAME/privclients 
+    Clients an diesem Interface bekommen diese Berechtigungen,
+    Format: SRC-NET DST-NET PROTO PORT [OutIFACE]
+  - interface-NAME/snat 
+    Ausgehende Verbindungen an diesem Interface werden mittels SNAT umgesetzt
+    Format: OrigSRC NewSRC PROTO PORT[:RANGE]
+  - interface-NAME/masquerade 
+    Ausgehende Verbindungen an diesem Interface werden mittels SNAT umgesetzt
+    Format: OrigSRC NewSRC PROTO PORT[:RANGE]
+      NewSRC ist unberuecksichtigt und nur der Kompatibilitaet mit SNAT wegen angegeben.
+  - interface-NAME/dnat 
+    Eingehende Verbindungen an diesem Interface werden mittels DNAT umgesetzt
+    Format: OrigTARG NewTARG PROTO OrigPORT[:RANGE] NewPORT
+  - interface-NAME/nolog 
+    Verbindungen hier werden nicht geloggt. Syntax wie bei privclients, allerdings mit DROP als Ergebnis statt ACCEPT
+  - interface-NAME/policy-routing 
+    Zuordnung zu nicht-Defaultroutingtabellen
+    SRC             DST             PROTO   PORTS   Routingname
+    0.0.0.0/0       0.0.0.0/0       tcp     80      dsl
+  - interface-NAME/extra 
+    Freiform Skript fuer Spezialfaelle
+
+- 1 Interface pro Routingtabelle nach dem Muster
+    policy-routing-TABELLENNAME
+    Hiermit koennen z.B. alle Port 80/tcp Anfragen ueber eine DSL Flatrate geleitet werden
+  - policy-routing-TABELLENNAME/comment
+    Kommentar, der einfach nur ausgedruckt wird
+  - policy-routing-TABELLENNAME/gateway
+    Defaultgateway, Syntax:
+    TYP	INTERFACE [IP]
+    PPP     ppp0
+    -> ppp0 wird das Defaultgateway, andere Arten sind noch nicht unterstuetzt
+  - policy-routing-TABELLENNAME/key
+    Zahl die mit fwmark gesetzt wird, sollte eindeutig sein pro System
+
+
+Berechtigungen und DNAT werden an dem Interface konfiguriert, an dem der Client haengt.
+SNAT und Masquerading werden am ausgehenden Interface konfiguriert.
