@@ -198,7 +198,7 @@ for iface in interface-*; do
   if [ -e interface-$iface/masquerade ]; then
     cat interface-$iface/masquerade | sed '/^[ \t]*$/d; /^#/d' |
     while read snet mnet proto dport; do
-      lihas_ipt_masquerade "$FILEnat" "$dnet" "$mnet" "$proto" "$dport"
+      lihas_ipt_masquerade "$FILEnat" "$snet" "$mnet" "$proto" "$dport"
     done
   fi
 done
