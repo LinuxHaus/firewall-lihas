@@ -164,21 +164,41 @@ for iface in interface-*; do
 done
 
 echo "Adding MASQUERADE"
+lihas_ipt_snat () {
+  outfile=$1
+  snet=$2
+  mnet=$3
+  proto=$4
+  dport=$5
+  if [ $dnet == "include" ]; then
+    if [ -e $mnet ]; then
+      cat $mnet | sed '/^[ \t]*$/d; /^#/d' |
+      while read dnet mnet proto dport; do
+        lihas_ipt_snat "$outfile" "$dnet" "$mnet" "$proto" "$dport"
+      done
+    else
+      echo "$mnet doesn't exist"
+    fi
+  else
+    if [ $dport == "0" ]; then
+      echo "-A post-$iface -s $snet -p $proto -j MASQUERADE" >> $outfile
+    else
+      if [ $proto == "icmp" ]; then
+        echo "-A post-$iface -s $snet -p $proto --icmp-type  $dport -j MASQUERADE" >> $outfile
+      else 
+        echo "-A post-$iface -s $snet -p $proto --dport $dport -j MASQUERADE" >> $outfile
+      fi
+    fi
+  fi
+}
+
 for iface in interface-*; do
   iface=${iface#interface-}
   [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
   if [ -e interface-$iface/masquerade ]; then
     cat interface-$iface/masquerade | sed '/^[ \t]*$/d; /^#/d' |
     while read snet mnet proto dport; do
-      if [ $dport == "0" ]; then
-        echo "-A post-$iface -s $snet -p $proto -j MASQUERADE" >> $FILEnat
-      else
-        if [ $proto == "icmp" ]; then
-          echo "-A post-$iface -s $snet -p $proto --icmp-type  $dport -j MASQUERADE" >> $FILEnat
-        else 
-          echo "-A post-$iface -s $snet -p $proto --dport $dport -j MASQUERADE" >> $FILEnat
-        fi
-      fi
+      lihas_ipt_snat "$FILEnat" "$dnet" "$mnet" "$proto" "$dport"
     done
   fi
 done
