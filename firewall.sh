@@ -124,9 +124,9 @@ lihas_ipt_dnat () {
       echo "-A pre-$iface -d $dnet -p $proto --to-destination $mnet" >> $FILEnat
     else
       if [ $proto == "icmp" ]; then
-        echo "-A pre-$iface -d $dnet -p $proto --icmp-type $dport -j DNAT --to-destination $mnet:$ndport" >> $FILEnat
+        echo "-A pre-$iface -d $dnet -p $proto --icmp-type $dport -j DNAT --to-destination $mnet:$ndport" >> $outfile
       else 
-        echo "-A pre-$iface -d $dnet -p $proto --dport $dport -j DNAT --to-destination $mnet:$ndport" >> $FILEnat
+        echo "-A pre-$iface -d $dnet -p $proto --dport $dport -j DNAT --to-destination $mnet:$ndport" >> $outfile
       fi
     fi
   fi
@@ -184,36 +184,57 @@ for iface in interface-*; do
 done
 
 echo "Adding priviledged Clients"
+lihas_ipt_privclients () {
+  outfile=$1
+  snet=$2
+  dnet=$3
+  proto=$4
+  dport=$5
+  oiface=$6
+  if [ "$snet" == "include" ]; then
+    if [ -e "$dnet" ]; then
+      cat $dnet | sed '/^[ \t]*$/d; /^#/d' |
+      while read snet dnet proto dport oiface; do
+        lihas_ipt_privclients "$outfile" "$snet" "$dnet" "$proto" "$dport" "$oiface"
+      done
+    else
+      echo "$snet doesn't exist"
+    fi
+  else
+    if [ $dport == "0" ]; then
+      if [ "ga$oiface" == "ga" ]; then
+        echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -j ACCEPT" >> $outfile
+        echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto -j ACCEPT" >> $outfile
+      else
+        echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -o $oiface -j ACCEPT" >> $outfile
+      fi
+    else
+      if [ "ga$oiface" == "ga" ]; then
+        if [ $proto == "icmp" ]; then
+          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j ACCEPT" >> $outfile
+          echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j ACCEPT" >> $outfile
+        else 
+          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT" >> $outfile
+          echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT" >> $outfile
+        fi
+      else
+        if [ $proto == "icmp" ]; then
+          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -o $oiface -j ACCEPT" >> $outfile
+        else 
+          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -o $oiface -j ACCEPT" >> $outfile
+        fi
+      fi
+    fi
+  fi
+}
+
 for iface in interface-*; do
   iface=${iface#interface-}
   [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
   if [ -e interface-$iface/privclients ]; then
     cat interface-$iface/privclients | sed '/^[ \t]*$/d; /^#/d' |
     while read snet dnet proto dport oiface; do
-      if [ $dport == "0" ]; then
-        if [ "ga$oiface" == "ga" ]; then
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -j ACCEPT" >> $FILEfilter
-          echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto -j ACCEPT" >> $FILEfilter
-        else
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -o $oiface -j ACCEPT" >> $FILEfilter
-        fi
-      else
-        if [ "ga$oiface" == "ga" ]; then
-          if [ $proto == "icmp" ]; then
-            echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j ACCEPT" >> $FILEfilter
-            echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j ACCEPT" >> $FILEfilter
-          else 
-            echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT" >> $FILEfilter
-            echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT" >> $FILEfilter
-          fi
-        else
-          if [ $proto == "icmp" ]; then
-            echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -o $oiface -j ACCEPT" >> $FILEfilter
-          else 
-            echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -o $oiface -j ACCEPT" >> $FILEfilter
-          fi
-        fi
-      fi
+      lihas_ipt_privclients "$FILEfilter" "$snet" "$dnet" "$proto" "$dport" "$oiface"
     done
   fi
 done
