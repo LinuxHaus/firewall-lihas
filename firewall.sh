@@ -173,8 +173,8 @@ lihas_ipt_masquerade () {
   if [ $snet == "include" ]; then
     if [ -e $mnet ]; then
       cat $mnet | sed '/^[ \t]*$/d; /^#/d' |
-      while read dnet mnet proto dport; do
-        lihas_ipt_masquerade "$outfile" "$dnet" "$mnet" "$proto" "$dport"
+      while read snet mnet proto dport; do
+        lihas_ipt_masquerade "$outfile" "$snet" "$mnet" "$proto" "$dport"
       done
     else
       echo "$mnet doesn't exist"
