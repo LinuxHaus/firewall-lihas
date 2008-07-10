@@ -164,7 +164,7 @@ for iface in interface-*; do
 done
 
 echo "Adding MASQUERADE"
-lihas_ipt_snat () {
+lihas_ipt_masquerade () {
   outfile=$1
   snet=$2
   mnet=$3
@@ -174,7 +174,7 @@ lihas_ipt_snat () {
     if [ -e $mnet ]; then
       cat $mnet | sed '/^[ \t]*$/d; /^#/d' |
       while read dnet mnet proto dport; do
-        lihas_ipt_snat "$outfile" "$dnet" "$mnet" "$proto" "$dport"
+        lihas_ipt_masquerade "$outfile" "$dnet" "$mnet" "$proto" "$dport"
       done
     else
       echo "$mnet doesn't exist"
@@ -198,7 +198,7 @@ for iface in interface-*; do
   if [ -e interface-$iface/masquerade ]; then
     cat interface-$iface/masquerade | sed '/^[ \t]*$/d; /^#/d' |
     while read snet mnet proto dport; do
-      lihas_ipt_snat "$FILEnat" "$dnet" "$mnet" "$proto" "$dport"
+      lihas_ipt_masquerade "$FILEnat" "$dnet" "$mnet" "$proto" "$dport"
     done
   fi
 done
