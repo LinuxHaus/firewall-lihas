@@ -25,6 +25,9 @@
     0.0.0.0/0       0.0.0.0/0       tcp     80      dsl
   - interface-NAME/extra 
     Freiform Skript fuer Spezialfaelle
+  - privclients und dnat koennen Zeilen nach dem Muster
+       include DATEINAME
+    enthalten.
 
 - 1 Interface pro Routingtabelle nach dem Muster
     policy-routing-TABELLENNAME
