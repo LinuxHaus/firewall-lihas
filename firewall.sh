@@ -103,7 +103,7 @@ echo "-A OUTPUT	-j ACCEPT -o lo" >> $FILEfilter
 echo "-A INPUT	-j ACCEPT -i lo" >> $FILEfilter
 
 echo "Adding DNAT"
-ipt_lihas_dnat () {
+lihas_ipt_dnat () {
   outfile=$1
   dnet=$2
   mnet=$3
@@ -114,7 +114,7 @@ ipt_lihas_dnat () {
     if [ -e $mnet ]; then
       cat $mnet | sed '/^[ \t]*$/d; /^#/d' |
       while read dnet mnet proto dport ndport; do
-        ipt_lihas_dnat "$outfile" "$dnet" "$mnet" "$proto" "$dport" "$ndport"
+        lihas_ipt_dnat "$outfile" "$dnet" "$mnet" "$proto" "$dport" "$ndport"
       done
     else
       echo "$mnet doesn't exist"
@@ -138,7 +138,7 @@ for iface in interface-*; do
   if [ -e interface-$iface/dnat ]; then
     cat interface-$iface/dnat | sed '/^[ \t]*$/d; /^#/d' |
     while read dnet mnet proto dport ndport; do
-      ipt_lihas_dnat "$FILEnat" "$dnet" "$mnet" "$proto" "$dport" "$ndport"
+      lihas_ipt_dnat "$FILEnat" "$dnet" "$mnet" "$proto" "$dport" "$ndport"
     done
   fi
 done
