@@ -170,7 +170,7 @@ lihas_ipt_masquerade () {
   mnet=$3
   proto=$4
   dport=$5
-  if [ $dnet == "include" ]; then
+  if [ $snet == "include" ]; then
     if [ -e $mnet ]; then
       cat $mnet | sed '/^[ \t]*$/d; /^#/d' |
       while read dnet mnet proto dport; do
