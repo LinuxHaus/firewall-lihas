@@ -12,6 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
+# $Id$
 #
 
 # Do NOT "set -e"
