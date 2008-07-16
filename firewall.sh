@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id$
+# $Id: firewall.sh,v 1.18 2008/07/16 07:55:27 are Exp are $
 #
 
 # Do NOT "set -e"
@@ -256,6 +256,53 @@ for iface in interface-*; do
     cat interface-$iface/privclients | sed '/^[ \t]*$/d; /^#/d' |
     while read snet dnet proto dport oiface; do
       lihas_ipt_privclients "$FILEfilter" "$snet" "$dnet" "$proto" "$dport" "$oiface"
+    done
+  fi
+done
+
+
+echo Policy Routing
+echo "-I PREROUTING -j MARK --set-mark 0" >> $FILEmangle
+echo "-I OUTPUT -j MARK --set-mark 0" >> $FILEmangle
+for policy in policy-routing-*; do
+  policy=${policy#policy-routing-}
+  [ -e policy-routing-$policy/comment ] && cat policy-routing-$policy/comment | sed 's/^/ /'
+  key=$(cat policy-routing-$policy/key)
+  if [ -e policy-routing-$policy/gateway ]; then
+    cat policy-routing-$policy/gateway | sed '/^[ \t]*$/d; /^#/d' |
+    while read type interface; do
+      if [ $type == "PPP" ]; then
+        ip route flush table $policy
+      ip route ls |
+      sed 's/^default.*/default dev '$interface'/' |
+      while read a; do
+        ip route add $a table $policy
+      done
+      while ip rule | grep 'lookup '$policy; do
+        ip rule del fwmark $key table $policy
+      done
+      ip rule add fwmark $key table $policy
+      ip route flush cache
+      else
+        echo Non PPP-Policy-Routing is not implemented
+      fi
+    done
+  fi
+done
+for iface in interface-*; do
+  iface=${iface#interface-}
+  [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
+  if [ -e interface-$iface/policy-routing ]; then
+    cat interface-$iface/policy-routing | sed '/^[ \t]*$/d; /^#/d' |
+    while read snet dnet proto dport policy; do
+      mark=$(cat policy-routing-$policy/key)
+      if [ $dport == "0" ]; then
+          echo "-A OUTPUT -s $snet -d $dnet -p $proto -j MARK --set-mark $mark" >> $FILEmangle
+          echo "-A PREROUTING -s $snet -d $dnet -p $proto -j MARK --set-mark $mark" >> $FILEmangle
+      else
+          echo "-A OUTPUT -s $snet -d $dnet -p $proto --dport $dport -j MARK --set-mark $mark" >> $FILEmangle
+          echo "-A PREROUTING -s $snet -d $dnet -p $proto --dport $dport -j MARK --set-mark $mark" >> $FILEmangle
+      fi
     done
   fi
 done
