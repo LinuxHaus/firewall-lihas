@@ -1,4 +1,4 @@
-# $Id$
+# $Id: README,v 1.4 2008/07/16 07:55:27 are Exp are $
 
 - 1 Verzeichnis pro Interface nach dem Muster
     interface-NAME
@@ -19,6 +19,8 @@
   - interface-NAME/dnat 
     Eingehende Verbindungen an diesem Interface werden mittels DNAT umgesetzt
     Format: OrigTARG NewTARG PROTO OrigPORT[:RANGE] NewPORT
+    Alternativ, um ein dnat zu verhindern:
+      ACCEPT SourceIP PROTO OrigPORT[:RANGE]
   - interface-NAME/nolog 
     Verbindungen hier werden nicht geloggt. Syntax wie bei privclients, allerdings mit DROP als Ergebnis statt ACCEPT
   - interface-NAME/policy-routing 
