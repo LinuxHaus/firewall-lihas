@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.19 2008/07/16 10:11:08 are Exp $
+# $Id: firewall.sh,v 1.20 2008/07/16 12:04:45 are Exp are $
 #
 
 # Do NOT "set -e"
@@ -128,7 +128,7 @@ lihas_ipt_dnat () {
         if [ $proto == "icmp" ]; then
           echo "-A pre-$iface -s $mnet -p $proto --icmp-type $dport -j ACCEPT" >> $outfile
         else 
-          echo "-A pre-$iface -d $mnet -p $proto --dport $dport -j ACCEPT" >> $outfile
+          echo "-A pre-$iface -s $mnet -p $proto --dport $dport -j ACCEPT" >> $outfile
         fi
       fi
     else
