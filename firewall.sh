@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.18 2008/07/16 07:55:27 are Exp are $
+# $Id: firewall.sh,v 1.19 2008/07/16 10:11:08 are Exp $
 #
 
 # Do NOT "set -e"
@@ -121,13 +121,25 @@ lihas_ipt_dnat () {
       echo "$mnet doesn't exist"
     fi
   else
-    if [ $dport == "0" ]; then
-      echo "-A pre-$iface -d $dnet -p $proto --to-destination $mnet" >> $FILEnat
+    if [ $dnet == ACCEPT ]; then
+      if [ $dport == "0" ]; then
+        echo "-A pre-$iface -s $mnet -p $proto -j ACCEPT" >> $FILEnat
+      else
+        if [ $proto == "icmp" ]; then
+          echo "-A pre-$iface -s $mnet -p $proto --icmp-type $dport -j ACCEPT" >> $outfile
+        else 
+          echo "-A pre-$iface -d $mnet -p $proto --dport $dport -j ACCEPT" >> $outfile
+        fi
+      fi
     else
-      if [ $proto == "icmp" ]; then
-        echo "-A pre-$iface -d $dnet -p $proto --icmp-type $dport -j DNAT --to-destination $mnet:$ndport" >> $outfile
-      else 
-        echo "-A pre-$iface -d $dnet -p $proto --dport $dport -j DNAT --to-destination $mnet:$ndport" >> $outfile
+      if [ $dport == "0" ]; then
+        echo "-A pre-$iface -d $dnet -p $proto -j DNAT --to-destination $mnet" >> $FILEnat
+      else
+        if [ $proto == "icmp" ]; then
+          echo "-A pre-$iface -d $dnet -p $proto --icmp-type $dport -j DNAT --to-destination $mnet:$ndport" >> $outfile
+        else 
+          echo "-A pre-$iface -d $dnet -p $proto --dport $dport -j DNAT --to-destination $mnet:$ndport" >> $outfile
+        fi
       fi
     fi
   fi
