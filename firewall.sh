@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.20 2008/07/16 12:04:45 are Exp are $
+# $Id: firewall.sh,v 1.21 2008/07/16 12:52:59 are Exp are $
 #
 
 # Do NOT "set -e"
@@ -279,24 +279,26 @@ echo "-I OUTPUT -j MARK --set-mark 0" >> $FILEmangle
 for policy in policy-routing-*; do
   policy=${policy#policy-routing-}
   [ -e policy-routing-$policy/comment ] && cat policy-routing-$policy/comment | sed 's/^/ /'
-  key=$(cat policy-routing-$policy/key)
-  if [ -e policy-routing-$policy/gateway ]; then
-    cat policy-routing-$policy/gateway | sed '/^[ \t]*$/d; /^#/d' |
-    while read type interface; do
-      if [ $type == "PPP" ]; then
-        ip route flush table $policy
-      ip route ls |
-      sed 's/^default.*/default dev '$interface'/' |
-      while read a; do
-        ip route add $a table $policy
-      done
-      while ip rule | grep 'lookup '$policy; do
-        ip rule del fwmark $key table $policy
-      done
-      ip rule add fwmark $key table $policy
-      ip route flush cache
-      else
-        echo Non PPP-Policy-Routing is not implemented
+  if [ -e policy-routing-$policy/key ]; then
+    key=$(cat policy-routing-$policy/key)
+    if [ -e policy-routing-$policy/gateway ]; then
+      cat policy-routing-$policy/gateway | sed '/^[ \t]*$/d; /^#/d' |
+      while read type interface; do
+        if [ $type == "PPP" ]; then
+          ip route flush table $policy
+        ip route ls |
+        sed 's/^default.*/default dev '$interface'/' |
+        while read a; do
+          ip route add $a table $policy
+        done
+        while ip rule | grep 'lookup '$policy; do
+          ip rule del fwmark $key table $policy
+        done
+        ip rule add fwmark $key table $policy
+        ip route flush cache
+        else
+          echo Non PPP-Policy-Routing is not implemented
+	fi
       fi
     done
   fi
