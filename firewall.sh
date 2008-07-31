@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.21 2008/07/16 12:52:59 are Exp are $
+# $Id: firewall.sh,v 1.22 2008/07/31 09:26:50 are Exp are $
 #
 
 # Do NOT "set -e"
@@ -299,8 +299,8 @@ for policy in policy-routing-*; do
         else
           echo Non PPP-Policy-Routing is not implemented
 	fi
-      fi
-    done
+      done
+    fi
   fi
 done
 for iface in interface-*; do
