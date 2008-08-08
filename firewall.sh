@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.22 2008/07/31 09:26:50 are Exp are $
+# $Id: firewall.sh,v 1.23 2008/07/31 09:27:21 are Exp are $
 #
 
 # Do NOT "set -e"
@@ -389,6 +389,7 @@ case "$1" in
         [ "$VERBOSE" != no ] && log_daemon_msg "Starting $DESC" "$NAME"
         do_start
         iptables-restore < $FILE
+	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
         case "$?" in
                 0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
                 2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
@@ -410,6 +411,7 @@ case "$1" in
         log_daemon_msg "Reloading $DESC" "$NAME"
         do_start
         iptables-restore < $FILE
+	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
         log_end_msg $?
         ;;
   restart|force-reload)
@@ -423,6 +425,7 @@ case "$1" in
           0|1)
                 do_start
                 iptables-restore < $FILE
+	        [ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
                 case "$?" in
                         0) log_end_msg 0 ;;
                         1) log_end_msg 1 ;; # Old process is still running
