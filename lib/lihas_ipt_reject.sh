@@ -19,25 +19,25 @@ lihas_ipt_rejectclients () {
   else
     if [ $dport == "0" ]; then
       if [ "ga$oiface" == "ga" ]; then
-        echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -j ACCEPT" >> $outfile
-        echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto -j ACCEPT" >> $outfile
+        echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -j REJECT" >> $outfile
+        echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto -j REJECT" >> $outfile
       else
-        echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -o $oiface -j ACCEPT" >> $outfile
+        echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -o $oiface -j REJECT" >> $outfile
       fi
     else
       if [ "ga$oiface" == "ga" ]; then
         if [ $proto == "icmp" ]; then
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j ACCEPT" >> $outfile
-          echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j ACCEPT" >> $outfile
+          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j REJECT" >> $outfile
+          echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j REJECT" >> $outfile
         else 
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT" >> $outfile
-          echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT" >> $outfile
+          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j REJECT" >> $outfile
+          echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j REJECT" >> $outfile
         fi
       else
         if [ $proto == "icmp" ]; then
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -o $oiface -j ACCEPT" >> $outfile
+          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -o $oiface -j REJECT" >> $outfile
         else 
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -o $oiface -j ACCEPT" >> $outfile
+          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -o $oiface -j REJECT" >> $outfile
         fi
       fi
     fi

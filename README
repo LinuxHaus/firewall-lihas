@@ -1,4 +1,4 @@
-# $Id: README,v 1.6 2008/08/14 09:21:34 are Exp are $
+# $Id: README,v 1.7 2008/08/14 12:20:58 are Exp are $
 
 - 1 Verzeichnis pro Interface nach dem Muster
     interface-NAME
@@ -9,6 +9,9 @@
   - interface-NAME/privclients 
     Clients an diesem Interface bekommen diese Berechtigungen,
     Format: SRC-NET DST-NET PROTO PORT [OutIFACE]
+  - interface-NAME/reject 
+    Analog privclients, werden aber mit REJECT abgewiesen bevor die privclients
+    ausgewertet werden. Es gibt keinen Logeintrag.
   - interface-NAME/snat 
     Ausgehende Verbindungen an diesem Interface werden mittels SNAT umgesetzt
     Format: OrigSRC NewSRC PROTO PORT[:RANGE]
@@ -29,16 +32,16 @@
     0.0.0.0/0       0.0.0.0/0       tcp     80      dsl
   - interface-NAME/extra 
     Freiform Skript fuer Spezialfaelle
-  - privclients, dnat, masquerade koennen Zeilen nach dem Muster
+  - privclients, dnat, masquerade, reject koennen Zeilen nach dem Muster
        include DATEINAME
     enthalten.
-  - privclients, dnat, snat, masquerade, nolog koennen statt Rechner-/Netzadressen auch
+  - privclients, dnat, snat, masquerade, nolog, reject koennen statt Rechner-/Netzadressen auch
     dns-HOSTNAME
     z.B. dns-www.lihas.de enthalten.
     DNS muss dafuer funktionieren, mehrere IPs pro Name sind ok,
     allerdings wird nur ausgewertet was host -t a HOSTNAME in diesem
     Moment zurueckgibt
-  - privclients, dnat, snat, masquerade, nolog koennen statt
+  - privclients, dnat, snat, masquerade, nolog, reject koennen statt
     Rechner-/Netzadressen/Ports auch Gruppen in
     groups/hostgroup-GROUPNAME bzw.
     groups/portgroup-GROUPNAME
