@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.26 2008/08/14 11:58:10 are Exp are $
+# $Id: firewall.sh,v 1.27 2008/08/14 12:49:05 are Exp are $
 #
 
 # Do NOT "set -e"
@@ -59,6 +59,7 @@ rm $FILE $FILEfilter $FILEnat $FILEmangle
 
 . lib/helper-dns.sh
 . lib/helper-group.sh
+. lib/lihas_ipt_reject.sh
 
 echo "Allowing all established Connections"
 for chain in INPUT OUTPUT FORWARD; do
@@ -215,6 +216,18 @@ for iface in interface-*; do
     cat interface-$iface/masquerade | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read snet mnet proto dport; do
       lihas_ipt_masquerade "$FILEnat" "$snet" "$mnet" "$proto" "$dport"
+    done
+  fi
+done
+
+echo "Rejecting extra Clients"
+for iface in interface-*; do
+  iface=${iface#interface-}
+  [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
+  if [ -e interface-$iface/rejectclients ]; then
+    cat interface-$iface/rejectclients | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+    while read snet dnet proto dport oiface; do
+      lihas_ipt_rejectclients "$FILEfilter" "$snet" "$dnet" "$proto" "$dport" "$oiface"
     done
   fi
 done

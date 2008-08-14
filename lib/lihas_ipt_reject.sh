@@ -1,6 +1,5 @@
 #!/bin/bash
 
-echo "Rejecting extra Clients"
 lihas_ipt_rejectclients () {
   outfile=$1
   snet=$2
@@ -45,13 +44,3 @@ lihas_ipt_rejectclients () {
   fi
 }
 
-for iface in interface-*; do
-  iface=${iface#interface-}
-  [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
-  if [ -e interface-$iface/rejectclients ]; then
-    cat interface-$iface/rejectclients | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
-    while read snet dnet proto dport oiface; do
-      lihas_ipt_rejectclients "$FILEfilter" "$snet" "$dnet" "$proto" "$dport" "$oiface"
-    done
-  fi
-done
