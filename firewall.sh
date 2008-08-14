@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.23 2008/07/31 09:27:21 are Exp are $
+# $Id: firewall.sh,v 1.24 2008/08/08 09:01:27 are Exp are $
 #
 
 # Do NOT "set -e"
@@ -113,7 +113,7 @@ lihas_ipt_dnat () {
   ndport=$6
   if [ $dnet == "include" ]; then
     if [ -e $mnet ]; then
-      cat $mnet | sed '/^[ \t]*$/d; /^#/d' |
+      cat $mnet | sed '/^[ \t]*$/d; /^#/d' | helper_dns |
       while read dnet mnet proto dport ndport; do
         lihas_ipt_dnat "$outfile" "$dnet" "$mnet" "$proto" "$dport" "$ndport"
       done
@@ -149,7 +149,7 @@ for iface in interface-*; do
   iface=${iface#interface-}
   [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
   if [ -e interface-$iface/dnat ]; then
-    cat interface-$iface/dnat | sed '/^[ \t]*$/d; /^#/d' |
+    cat interface-$iface/dnat | sed '/^[ \t]*$/d; /^#/d' | helper_dns |
     while read dnet mnet proto dport ndport; do
       lihas_ipt_dnat "$FILEnat" "$dnet" "$mnet" "$proto" "$dport" "$ndport"
     done
@@ -161,7 +161,7 @@ for iface in interface-*; do
   iface=${iface#interface-}
   [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
   if [ -e interface-$iface/snat ]; then
-    cat interface-$iface/snat | sed '/^[ \t]*$/d; /^#/d' |
+    cat interface-$iface/snat | sed '/^[ \t]*$/d; /^#/d' | helper_dns |
     while read snet mnet proto dport; do
       if [ $dport == "0" ]; then
         echo "-A post-$iface -s $snet -p $proto -j SNAT --to-source $mnet" >> $FILEnat
@@ -185,7 +185,7 @@ lihas_ipt_masquerade () {
   dport=$5
   if [ $snet == "include" ]; then
     if [ -e $mnet ]; then
-      cat $mnet | sed '/^[ \t]*$/d; /^#/d' |
+      cat $mnet | sed '/^[ \t]*$/d; /^#/d' | helper_dns |
       while read snet mnet proto dport; do
         lihas_ipt_masquerade "$outfile" "$snet" "$mnet" "$proto" "$dport"
       done
@@ -209,7 +209,7 @@ for iface in interface-*; do
   iface=${iface#interface-}
   [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
   if [ -e interface-$iface/masquerade ]; then
-    cat interface-$iface/masquerade | sed '/^[ \t]*$/d; /^#/d' |
+    cat interface-$iface/masquerade | sed '/^[ \t]*$/d; /^#/d' | helper_dns |
     while read snet mnet proto dport; do
       lihas_ipt_masquerade "$FILEnat" "$snet" "$mnet" "$proto" "$dport"
     done
@@ -226,7 +226,7 @@ lihas_ipt_privclients () {
   oiface=$6
   if [ "$snet" == "include" ]; then
     if [ -e "$dnet" ]; then
-      cat $dnet | sed '/^[ \t]*$/d; /^#/d' |
+      cat $dnet | sed '/^[ \t]*$/d; /^#/d' | helper_dns |
       while read snet dnet proto dport oiface; do
         lihas_ipt_privclients "$outfile" "$snet" "$dnet" "$proto" "$dport" "$oiface"
       done
@@ -265,7 +265,7 @@ for iface in interface-*; do
   iface=${iface#interface-}
   [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
   if [ -e interface-$iface/privclients ]; then
-    cat interface-$iface/privclients | sed '/^[ \t]*$/d; /^#/d' |
+    cat interface-$iface/privclients | sed '/^[ \t]*$/d; /^#/d' | helper_dns |
     while read snet dnet proto dport oiface; do
       lihas_ipt_privclients "$FILEfilter" "$snet" "$dnet" "$proto" "$dport" "$oiface"
     done
@@ -282,7 +282,7 @@ for policy in policy-routing-*; do
   if [ -e policy-routing-$policy/key ]; then
     key=$(cat policy-routing-$policy/key)
     if [ -e policy-routing-$policy/gateway ]; then
-      cat policy-routing-$policy/gateway | sed '/^[ \t]*$/d; /^#/d' |
+      cat policy-routing-$policy/gateway | sed '/^[ \t]*$/d; /^#/d' | helper_dns |
       while read type interface; do
         if [ $type == "PPP" ]; then
           ip route flush table $policy
@@ -307,7 +307,7 @@ for iface in interface-*; do
   iface=${iface#interface-}
   [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
   if [ -e interface-$iface/policy-routing ]; then
-    cat interface-$iface/policy-routing | sed '/^[ \t]*$/d; /^#/d' |
+    cat interface-$iface/policy-routing | sed '/^[ \t]*$/d; /^#/d' | helper_dns |
     while read snet dnet proto dport policy; do
       mark=$(cat policy-routing-$policy/key)
       if [ $dport == "0" ]; then
@@ -330,7 +330,7 @@ for iface in interface-*; do
   iface=${iface#interface-}
   [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
   if [ -e interface-$iface/nolog ]; then
-    cat interface-$iface/nolog | sed '/^[ \t]*$/d; /^#/d' |
+    cat interface-$iface/nolog | sed '/^[ \t]*$/d; /^#/d' | helper_dns |
     while read snet dnet proto dport oiface; do
       if [ $dport == "0" ]; then
         if [ "ga$oiface" == "ga" ]; then
