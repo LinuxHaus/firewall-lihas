@@ -1,4 +1,4 @@
-# $Id: README,v 1.5 2008/07/16 12:07:12 are Exp are $
+# $Id: README,v 1.6 2008/08/14 09:21:34 are Exp are $
 
 - 1 Verzeichnis pro Interface nach dem Muster
     interface-NAME
@@ -38,9 +38,15 @@
     DNS muss dafuer funktionieren, mehrere IPs pro Name sind ok,
     allerdings wird nur ausgewertet was host -t a HOSTNAME in diesem
     Moment zurueckgibt
+  - privclients, dnat, snat, masquerade, nolog koennen statt
+    Rechner-/Netzadressen/Ports auch Gruppen in
+    groups/hostgroup-GROUPNAME bzw.
+    groups/portgroup-GROUPNAME
+    definiert werden, hostgroup-GROUPNAME bzw. portgroup-GROUPNAME steht dann anstelle
+    des POrts/Hosts/Netzwerks
 
 
-- 1 Interface pro Routingtabelle nach dem Muster
+- 1 Verzeichnis pro Routingtabelle nach dem Muster
     policy-routing-TABELLENNAME
     Hiermit koennen z.B. alle Port 80/tcp Anfragen ueber eine DSL Flatrate geleitet werden
   - policy-routing-TABELLENNAME/comment
@@ -53,6 +59,13 @@
   - policy-routing-TABELLENNAME/key
     Zahl die mit fwmark gesetzt wird, sollte eindeutig sein pro System
 
+- Verzeichnis groups
+  - Datei hostgroup-GROUPNAME
+    1 Zeile pro Host der zu der Grouppe gehoert
+  - Datei portgroup-GROUPNAME
+    1 Zeile pro Port der dazu gehoert, wenn die urspruengliche Datei
+    als Protokoll nay' enthaelt, werden alle Zeile eingefuegt, wenn
+    nicht nur die mit dem entsprechenden Protokoll
 
 Berechtigungen und DNAT werden an dem Interface konfiguriert, an dem der Client haengt.
 SNAT und Masquerading werden am ausgehenden Interface konfiguriert.
