@@ -53,5 +53,3 @@ helper_portgroup () {
     fi
   done
 }
-
-echo hostgroup-testhosts hostgroup-testhosts1 any portgroup-dns | helper_hostgroup | helper_portgroup
