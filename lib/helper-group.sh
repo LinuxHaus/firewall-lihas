@@ -3,7 +3,7 @@
 helper_hostgroup () {
   cat | while read replacement; do
     if echo $replacement | grep '\b'hostgroup- > /dev/null; then
-      hostgroup_replace=$(echo $replacement | sed 's/.*hostgroup-/hostgroup-/; s/hostgroup-\([^ \t]*\)[ \t].*/hostgroup-\1/')
+      hostgroup_replace=$(echo $replacement | sed 's/.*hostgroup-/hostgroup-/; s/hostgroup-\([^ \t]*\)[ \t].*/hostgroup-\1/; s/\//\\\/g')
       cat groups/$hostgroup_replace | sed '/^[ \t]*$/d; /^#/d; s/\//\\\/g' |
       while read name; do
         repl=$( echo $replacement | sed s/$hostgroup_replace/$name/ )
@@ -23,7 +23,7 @@ helper_portgroup () {
   cat | while read replacement; do
     if echo $replacement | grep '\b'portgroup- > /dev/null; then
       repproto=$(echo $replacement | awk '{print $3}')
-      portgroup_replace=$(echo $replacement | sed 's/.*portgroup-/portgroup-/; s/portgroup-\([^ \t]*\)[ \t].*/portgroup-\1/')
+      portgroup_replace=$(echo $replacement | sed 's/.*portgroup-/portgroup-/; s/portgroup-\([^ \t]*\)[ \t].*/portgroup-\1/; s/\//\\\/g')
       if [ "$repproto" == "any" ]; then
         cat groups/$portgroup_replace | sed '/^[ \t]*$/d; /^#/d; s/\//\\\/g' |
         while read proto port; do
