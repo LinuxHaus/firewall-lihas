@@ -1,12 +1,12 @@
 #!/bin/bash
 
 helper_hostgroup () {
-  cat | sed '/^#/d; /^[ \t]*$/d; s/\//\\\//g' | while read replacement; do
-    if echo $replacement | grep '\b'hostgroup- > /dev/null; then
+  cat | sed '/^#/d; /^[ \t]*$/d;' | while read replacement; do
+    if echo $replacement | grep '\b'HHHHhostgroup- > /dev/null; then
       hostgroup_replace=$(echo $replacement | sed 's/.*hostgroup-/hostgroup-/; s/hostgroup-\([^ \t]*\)[ \t].*/hostgroup-\1/')
       cat groups/$hostgroup_replace | sed '/^[ \t]*$/d; /^#/d' |
       while read name; do
-        name=$( echo $name | sed 's/\//\\\//g' )
+        name=$( echo $name | sed 's#/#\\/#g' )
 	echo $name >2
         repl=$( echo $replacement | sed 's/'"$hostgroup_replace"'/'"$name"'/' )
         if echo $repl | grep '\b'hostgroup- > /dev/null; then
