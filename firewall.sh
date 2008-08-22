@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.29 2008/08/14 13:14:44 are Exp are $
+# $Id: firewall.sh,v 1.30 2008/08/22 13:37:26 are Exp are $
 #
 
 # Do NOT "set -e"
@@ -160,6 +160,46 @@ for iface in interface-*; do
   fi
 done
 
+
+lihas_ipt_snat () {
+  outfile=$1
+  dnet=$2
+  mnet=$3
+  proto=$4
+  dport=$5
+  if [ $dnet == "include" ]; then
+    if [ -e $mnet ]; then
+      cat $mnet | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+      while read dnet mnet proto dport; do
+        lihas_ipt_snat "$outfile" "$dnet" "$mnet" "$proto" "$dport"
+      done
+    else
+      echo "$mnet doesn't exist"
+    fi
+  else
+    if [ $dnet == ACCEPT ]; then
+      if [ $dport == "0" ]; then
+        echo "-A post-$iface -s $snet -p $proto -j ACCEPT" >> $FILEnat
+      else
+        if [ $proto == "icmp" ]; then
+          echo "-A post-$iface -s $snet -p $proto --icmp-type  $dport -j ACCEPT" >> $outfile
+        else
+          echo "-A post-$iface -s $snet -p $proto --dport $dport -j ACCEPT" >> $outfile
+        fi
+      fi
+    else
+      if [ $dport == "0" ]; then
+        echo "-A post-$iface -s $snet -p $proto -j SNAT --to-source $mnet" >> $FILEnat
+      else
+        if [ $proto == "icmp" ]; then
+          echo "-A post-$iface -s $snet -p $proto --icmp-type  $dport -j SNAT --to-source $mnet" >> $outfile
+        else
+          echo "-A post-$iface -s $snet -p $proto --dport $dport -j SNAT --to-source $mnet" >> $outfile
+        fi
+      fi
+    fi
+  fi
+}
 echo "Adding SNAT"
 for iface in interface-*; do
   iface=${iface#interface-}
@@ -167,15 +207,7 @@ for iface in interface-*; do
   if [ -e interface-$iface/snat ]; then
     cat interface-$iface/snat | sed '/^[ \t]*$/d; /^#/d' |
     while read snet mnet proto dport; do
-      if [ $dport == "0" ]; then
-        echo "-A post-$iface -s $snet -p $proto -j SNAT --to-source $mnet" >> $FILEnat
-      else
-        if [ $proto == "icmp" ]; then
-          echo "-A post-$iface -s $snet -p $proto --icmp-type  $dport -j SNAT --to-source $mnet" >> $FILEnat
-        else 
-          echo "-A post-$iface -s $snet -p $proto --dport $dport -j SNAT --to-source $mnet" >> $FILEnat
-	fi
-      fi
+        lihas_ipt_snat "$outfile" "$dnet" "$mnet" "$proto" "$dport"
     done
   fi
 done
