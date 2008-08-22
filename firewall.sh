@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.27 2008/08/14 12:49:05 are Exp are $
+# $Id: firewall.sh,v 1.29 2008/08/14 13:14:44 are Exp are $
 #
 
 # Do NOT "set -e"
@@ -406,18 +406,10 @@ case "$1" in
         do_start
         iptables-restore < $FILE
 	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
-        case "$?" in
-                0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
-                2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
-        esac
         ;;
   stop)
         [ "$VERBOSE" != no ] && log_daemon_msg "Stopping $DESC" "$NAME"
         do_stop
-        case "$?" in
-                0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
-                2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
-        esac
         ;;
   reload|force-reload)
         #
@@ -428,7 +420,6 @@ case "$1" in
         do_start
         iptables-restore < $FILE
 	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
-        log_end_msg $?
         ;;
   restart|force-reload)
         #
@@ -442,15 +433,10 @@ case "$1" in
                 do_start
                 iptables-restore < $FILE
 	        [ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
-                case "$?" in
-                        0) log_end_msg 0 ;;
-                        1) log_end_msg 1 ;; # Old process is still running
-                        *) log_end_msg 1 ;; # Failed to start
-                esac
+		exit 0
                 ;;
           *)
                 # Failed to stop
-                log_end_msg 1
                 ;;
         esac
         ;;
@@ -461,3 +447,4 @@ case "$1" in
         ;;
 esac
 
+exit 0
