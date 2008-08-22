@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.30 2008/08/22 13:37:26 are Exp are $
+# $Id: firewall.sh,v 1.31 2008/08/22 15:02:17 are Exp are $
 #
 
 # Do NOT "set -e"
@@ -170,8 +170,8 @@ lihas_ipt_snat () {
   if [ $dnet == "include" ]; then
     if [ -e $mnet ]; then
       cat $mnet | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
-      while read dnet mnet proto dport; do
-        lihas_ipt_snat "$outfile" "$dnet" "$mnet" "$proto" "$dport"
+      while read snet mnet proto dport; do
+        lihas_ipt_snat "$outfile" "$snet" "$mnet" "$proto" "$dport"
       done
     else
       echo "$mnet doesn't exist"
@@ -205,9 +205,9 @@ for iface in interface-*; do
   iface=${iface#interface-}
   [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
   if [ -e interface-$iface/snat ]; then
-    cat interface-$iface/snat | sed '/^[ \t]*$/d; /^#/d' |
+    cat interface-$iface/snat | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read snet mnet proto dport; do
-        lihas_ipt_snat "$outfile" "$dnet" "$mnet" "$proto" "$dport"
+        lihas_ipt_snat "$FILEnat" "$snet" "$mnet" "$proto" "$dport"
     done
   fi
 done
