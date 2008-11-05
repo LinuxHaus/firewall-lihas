@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.31 2008/08/22 15:02:17 are Exp are $
+# $Id: firewall.sh,v 1.9 2008/09/24 21:38:40 root Exp $
 #
 
 # Do NOT "set -e"
@@ -335,10 +335,11 @@ for policy in policy-routing-*; do
         if [ $type == "PPP" ]; then
           ip route flush table $policy
         ip route ls |
-        sed 's/^default.*/default dev '$interface'/' |
+        sed '/^default.*/d' |
         while read a; do
           ip route add $a table $policy
         done
+	ip route add default dev $interface table $policy
         while ip rule | grep 'lookup '$policy; do
           ip rule del fwmark $key table $policy
         done
@@ -443,7 +444,7 @@ case "$1" in
         [ "$VERBOSE" != no ] && log_daemon_msg "Stopping $DESC" "$NAME"
         do_stop
         ;;
-  reload|force-reload)
+  reload|restart|force-reload)
         #
         # If do_reload() is not implemented then leave this commented out
         # and leave 'force-reload' as an alias for 'restart'.
@@ -452,25 +453,6 @@ case "$1" in
         do_start
         iptables-restore < $FILE
 	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
-        ;;
-  restart|force-reload)
-        #
-        # If the "reload" option is implemented then remove the
-        # 'force-reload' alias
-        #
-        log_daemon_msg "Restarting $DESC" "$NAME"
-        do_stop
-        case "$?" in
-          0|1)
-                do_start
-                iptables-restore < $FILE
-	        [ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
-		exit 0
-                ;;
-          *)
-                # Failed to stop
-                ;;
-        esac
         ;;
   *)
         #echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
