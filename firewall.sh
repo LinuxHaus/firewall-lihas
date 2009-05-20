@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.9 2008/09/24 21:38:40 root Exp $
+# $Id: firewall.sh,v 1.33 2008/11/05 11:58:31 are Exp are $
 #
 
 # Do NOT "set -e"
@@ -56,6 +56,12 @@ FILEfilter=/tmp/iptables-filter
 FILEnat=/tmp/iptables-nat
 FILEmangle=/tmp/iptables-mangle
 rm $FILE $FILEfilter $FILEnat $FILEmangle
+
+if [ `uname -m` == mips ]; then
+  LOGTARGET=ULOG
+else
+  LOGTARGET=LOG
+fi
 
 . lib/helper-dns.sh
 . lib/helper-group.sh
