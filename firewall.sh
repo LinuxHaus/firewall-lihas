@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.33 2008/11/05 11:58:31 are Exp are $
+# $Id$
 #
 
 # Do NOT "set -e"
@@ -57,12 +57,6 @@ FILEnat=/tmp/iptables-nat
 FILEmangle=/tmp/iptables-mangle
 rm $FILE $FILEfilter $FILEnat $FILEmangle
 
-if [ `uname -m` == mips ]; then
-  LOGTARGET=ULOG
-else
-  LOGTARGET=LOG
-fi
-
 . lib/helper-dns.sh
 . lib/helper-group.sh
 . lib/lihas_ipt_reject.sh
@@ -81,7 +75,6 @@ for chain in PREROUTING INPUT FORWARD OUTPUT POSTROUTING; do
   echo ":$chain ACCEPT" >> $FILEmangle
 done
 
-echo "Setting up Chains"
 for iface in interface-*; do
   iface=${iface#interface-}
   echo ":in-$iface -" >> $FILEfilter
@@ -92,6 +85,26 @@ for iface in interface-*; do
   echo ":post-$iface -" >> $FILEnat
 done
 
+echo "Setting up IPSEC Spoof Protection"
+for iface in interface-*; do
+  iface=${iface#interface-}
+  if [ -e interface-$iface/network-ipsec ]; then
+    [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
+    cat interface-$iface/network-ipsec | sed '/^[ \t]*$/d; /^#/d' |
+    while read network; do
+      echo "-A PREROUTING -p esp -j MARK --set-mark 8000/0000" >> $FILEmangle
+      echo "-A PREROUTING -p ah -j MARK --set-mark 8000/0000" >> $FILEmangle
+      echo "-A in-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j LOG" >> $FILEfilter
+      echo "-A fwd-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j LOG" >> $FILEfilter
+      echo "-A in-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j DROP" >> $FILEfilter
+      echo "-A fwd-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j DROP" >> $FILEfilter
+    done
+  fi
+  echo "-A PREROUTING -i $iface -j pre-$iface" >> $FILEnat
+  echo "-A POSTROUTING -o $iface -j post-$iface" >> $FILEnat
+done
+
+echo "Setting up Chains"
 for iface in interface-*; do
   iface=${iface#interface-}
   [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
@@ -157,8 +170,8 @@ lihas_ipt_dnat () {
 
 for iface in interface-*; do
   iface=${iface#interface-}
-  [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
   if [ -e interface-$iface/dnat ]; then
+    [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
     cat interface-$iface/dnat | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read dnet mnet proto dport ndport; do
       lihas_ipt_dnat "$FILEnat" "$dnet" "$mnet" "$proto" "$dport" "$ndport"
@@ -209,8 +222,8 @@ lihas_ipt_snat () {
 echo "Adding SNAT"
 for iface in interface-*; do
   iface=${iface#interface-}
-  [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
   if [ -e interface-$iface/snat ]; then
+    [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
     cat interface-$iface/snat | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read snet mnet proto dport; do
         lihas_ipt_snat "$FILEnat" "$snet" "$mnet" "$proto" "$dport"
@@ -249,8 +262,8 @@ lihas_ipt_masquerade () {
 
 for iface in interface-*; do
   iface=${iface#interface-}
-  [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
   if [ -e interface-$iface/masquerade ]; then
+    [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
     cat interface-$iface/masquerade | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read snet mnet proto dport; do
       lihas_ipt_masquerade "$FILEnat" "$snet" "$mnet" "$proto" "$dport"
@@ -261,8 +274,8 @@ done
 echo "Rejecting extra Clients"
 for iface in interface-*; do
   iface=${iface#interface-}
-  [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
   if [ -e interface-$iface/reject ]; then
+    [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
     cat interface-$iface/reject | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read snet dnet proto dport oiface; do
       lihas_ipt_rejectclients "$FILEfilter" "$snet" "$dnet" "$proto" "$dport" "$oiface"
@@ -317,8 +330,8 @@ lihas_ipt_privclients () {
 
 for iface in interface-*; do
   iface=${iface#interface-}
-  [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
   if [ -e interface-$iface/privclients ]; then
+    [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
     cat interface-$iface/privclients | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read snet dnet proto dport oiface; do
       lihas_ipt_privclients "$FILEfilter" "$snet" "$dnet" "$proto" "$dport" "$oiface"
@@ -332,8 +345,8 @@ echo "-I PREROUTING -j MARK --set-mark 0" >> $FILEmangle
 echo "-I OUTPUT -j MARK --set-mark 0" >> $FILEmangle
 for policy in policy-routing-*; do
   policy=${policy#policy-routing-}
-  [ -e policy-routing-$policy/comment ] && cat policy-routing-$policy/comment | sed 's/^/ /'
   if [ -e policy-routing-$policy/key ]; then
+    [ -e policy-routing-$policy/comment ] && cat policy-routing-$policy/comment | sed 's/^/ /'
     key=$(cat policy-routing-$policy/key)
     if [ -e policy-routing-$policy/gateway ]; then
       cat policy-routing-$policy/gateway | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
@@ -341,11 +354,10 @@ for policy in policy-routing-*; do
         if [ $type == "PPP" ]; then
           ip route flush table $policy
         ip route ls |
-        sed '/^default.*/d' |
+        sed 's/^default.*/default dev '$interface'/' |
         while read a; do
           ip route add $a table $policy
         done
-	ip route add default dev $interface table $policy
         while ip rule | grep 'lookup '$policy; do
           ip rule del fwmark $key table $policy
         done
@@ -360,8 +372,8 @@ for policy in policy-routing-*; do
 done
 for iface in interface-*; do
   iface=${iface#interface-}
-  [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
   if [ -e interface-$iface/policy-routing ]; then
+    [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
     cat interface-$iface/policy-routing | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read snet dnet proto dport policy; do
       mark=$(cat policy-routing-$policy/key)
@@ -383,8 +395,8 @@ echo LOCALHOST
 echo "Disable some logging"
 for iface in interface-*; do
   iface=${iface#interface-}
-  [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
   if [ -e interface-$iface/nolog ]; then
+    [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
     cat interface-$iface/nolog | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read snet dnet proto dport oiface; do
       if [ $dport == "0" ]; then
@@ -450,7 +462,7 @@ case "$1" in
         [ "$VERBOSE" != no ] && log_daemon_msg "Stopping $DESC" "$NAME"
         do_stop
         ;;
-  reload|restart|force-reload)
+  reload|force-reload)
         #
         # If do_reload() is not implemented then leave this commented out
         # and leave 'force-reload' as an alias for 'restart'.
@@ -459,6 +471,25 @@ case "$1" in
         do_start
         iptables-restore < $FILE
 	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
+        ;;
+  restart|force-reload)
+        #
+        # If the "reload" option is implemented then remove the
+        # 'force-reload' alias
+        #
+        log_daemon_msg "Restarting $DESC" "$NAME"
+        do_stop
+        case "$?" in
+          0|1)
+                do_start
+                iptables-restore < $FILE
+	        [ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
+		exit 0
+                ;;
+          *)
+                # Failed to stop
+                ;;
+        esac
         ;;
   *)
         #echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
