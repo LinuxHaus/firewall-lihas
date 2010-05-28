@@ -1,4 +1,4 @@
-# $Id: README,v 1.7 2008/08/14 12:20:58 are Exp are $
+# $Id: README,v 1.8 2008/08/14 13:18:29 are Exp are $
 
 - 1 Verzeichnis pro Interface nach dem Muster
     interface-NAME
@@ -6,6 +6,8 @@
     Kommentar, der einfach nur ausgedruckt wird
   - interface-NAME/network 
     Ein Netzwerk pro Zeile, das an diesem Interface haengt, z.B. 192.168.1.0/25
+  - interface-NAME/network-ipsec
+    Ein Netzwerk pro Zeile, das ueber IPSEC an diesem Interface haengt, z.B. 192.168.1.0/25
   - interface-NAME/privclients 
     Clients an diesem Interface bekommen diese Berechtigungen,
     Format: SRC-NET DST-NET PROTO PORT [OutIFACE]
