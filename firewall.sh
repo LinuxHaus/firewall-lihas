@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id$
+# $Id: firewall.sh,v 1.35 2010/05/28 12:50:29 are Exp are $
 #
 
 # Do NOT "set -e"
@@ -107,19 +107,23 @@ done
 echo "Setting up Chains"
 for iface in interface-*; do
   iface=${iface#interface-}
-  [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
-  if [ -e interface-$iface/network ]; then
-    cat interface-$iface/network | sed '/^[ \t]*$/d; /^#/d' |
-    while read network; do
-      echo "-A INPUT -s $network -i $iface -j in-$iface" >> $FILEfilter
-      echo "-A OUTPUT -d $network -o $iface -j out-$iface" >> $FILEfilter
-      echo "-A FORWARD -s $network -i $iface -j fwd-$iface" >> $FILEfilter
-    done
+  if [ ${iface} -eq "lo" ]; then
+    echo "-A OUTPUT -o $iface -j in-$iface" >> $FILEfilter
   else
-    echo "WARNING: Interface $iface has no network file"
+    [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
+    if [ -e interface-$iface/network ]; then
+      cat interface-$iface/network | sed '/^[ \t]*$/d; /^#/d' |
+      while read network; do
+        echo "-A INPUT -s $network -i $iface -j in-$iface" >> $FILEfilter
+        echo "-A OUTPUT -d $network -o $iface -j out-$iface" >> $FILEfilter
+        echo "-A FORWARD -s $network -i $iface -j fwd-$iface" >> $FILEfilter
+      done
+    else
+      echo "WARNING: Interface $iface has no network file"
+    fi
+    echo "-A PREROUTING -i $iface -j pre-$iface" >> $FILEnat
+    echo "-A POSTROUTING -o $iface -j post-$iface" >> $FILEnat
   fi
-  echo "-A PREROUTING -i $iface -j pre-$iface" >> $FILEnat
-  echo "-A POSTROUTING -o $iface -j post-$iface" >> $FILEnat
 done
 
 echo "Loopback Interface is fine"
