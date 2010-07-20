@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.35 2010/05/28 12:50:29 are Exp are $
+# $Id: firewall.sh,v 1.36 2010/07/19 13:21:52 are Exp are $
 #
 
 # Do NOT "set -e"
@@ -108,7 +108,7 @@ echo "Setting up Chains"
 for iface in interface-*; do
   iface=${iface#interface-}
   if [ ${iface} -eq "lo" ]; then
-    echo "-A OUTPUT -o $iface -j in-$iface" >> $FILEfilter
+    echo "-A OUTPUT -j in-$iface" >> $FILEfilter
   else
     [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
     if [ -e interface-$iface/network ]; then
