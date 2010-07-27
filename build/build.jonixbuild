@@ -9,7 +9,7 @@ export packagername="jsc, LiHAS"
 export email="<lihas@lihas.de>"
 sourcefiles="build.tar.gz"
 shortdesc="LiHAS Firewall"
-longdesc="This is the long buildhere description"
+longdesc="LiHAS Firewall"
 section=admin
 author="Adrian Reyer" #programmer/s of the souce-code
 website="http://www.lihas.de/"
@@ -42,7 +42,7 @@ build () {
 		cp -a interface-eth0 $PKG/etc/firewall.lihas.d/interface-eth99
 		$FAKEROOT chown -R root:root  $PKG
 
-		cp README $PKG/$docpath
+		cp README $PKG/$docpath/
 
 		#echo "ln -sf /etc/firewall.lihas.d/firewall.sh $initpath/firewall-lihas" > $postinstall
 		cd $PKG/etc/init.d/
