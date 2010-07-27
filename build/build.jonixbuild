@@ -3,9 +3,9 @@ NAME="firewall-lihas"
 #VERSION=${VERSION:-VERSION}
 export VERSION=$(grep firewall.sh ../../firewall.sh  | cut -d' ' -f4)
 echo version $VERSION
-BUILD=${BUILD:-BUILD}
+BUILD=2
 export packagershortcut=lihas
-export packagername="jsc, LiHAS"
+export packagername="LiHAS"
 export email="<lihas@lihas.de>"
 sourcefiles="build.tar.gz"
 shortdesc="LiHAS Firewall"
@@ -20,7 +20,13 @@ conffiles="/etc/firewall.lihas.d/localhost"
 #recommends=
 copyright=GPL
 cat << EOF > $changelog
-$NAME ($VERSION-$BUILD)
+$NAME (1.37-2)
+
+* Build-Script an Pfadaenderungen angepasst.
+
+-- jsc <jsc@lihas.de> 2010-07-27
+
+$NAME (1.37-1)
 
 * Made initial package.
 
