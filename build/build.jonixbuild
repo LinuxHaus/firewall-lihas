@@ -1,0 +1,49 @@
+#!/bin/sh
+NAME="firewall-lihas"
+#VERSION=${VERSION:-VERSION}
+export VERSION=$(grep firewall.sh ../../firewall.sh  | cut -d' ' -f4)
+echo version $VERSION
+BUILD=${BUILD:-BUILD}
+export packagershortcut=lihas
+export packagername="jsc, LiHAS"
+export email="<lihas@lihas.de>"
+sourcefiles="build.tar.gz"
+shortdesc="LiHAS Firewall"
+longdesc="This is the long buildhere description"
+section=admin
+author="Adrian Reyer" #programmer/s of the souce-code
+website="http://www.lihas.de/"
+ARCH=noarch
+depends="coreutils"  # bash (>= 2.0a ) # needs to be filled to be a good deb-package
+conffiles="/etc/firewall.lihas.d/localhost"
+#suggests=
+#recommends=
+copyright=GPL
+cat << EOF > $changelog
+$NAME ($VERSION-$BUILD)
+
+* Made initial package.
+
+-- LiHAS  <lihas@lihas.de> 2009-02-04
+EOF
+
+build () {
+		
+		mkdir -p $PKG/etc/firewall.lihas.d
+		cp -a lib $PKG/etc/firewall.lihas.d
+		$FAKEROOT chmod 0755 $PKG/etc/firewall.lihas.d/lib/*.sh
+		cp -a README $PKG/etc/firewall.lihas.d
+		cp -a include $PKG/etc/firewall.lihas.d
+		cp -a groups $PKG/etc/firewall.lihas.d
+		$FAKEROOT install -m 0755 localhost $PKG/etc/firewall.lihas.d/
+		$FAKEROOT install -m 0755 firewall.sh $PKG/etc/firewall.lihas.d/
+		cp -a iptables-accept $PKG/etc/firewall.lihas.d
+		cp -a policy-routing-dsl $PKG/etc/firewall.lihas.d
+		cp -a interface-eth0 $PKG/etc/firewall.lihas.d/interface-eth99
+		$FAKEROOT chown -R root:root  $PKG
+
+		cp README $PKG/$docpath
+
+		echo "ln -sf /etc/firewall.lihas.d/firewall.sh $initpath/firewall-lihas" > $postinstall
+
+	}
