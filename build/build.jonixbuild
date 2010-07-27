@@ -45,7 +45,7 @@ build () {
 		cp README $PKG/$docpath
 
 		#echo "ln -sf /etc/firewall.lihas.d/firewall.sh $initpath/firewall-lihas" > $postinstall
-		cd $PKG/$initpath 
+		cd $PKG/etc/init.d/
 		ln -sf /etc/firewall.lihas.d/firewall.sh firewall-lihas
 
 	}
