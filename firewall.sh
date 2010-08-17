@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.37 2010/07/20 08:54:37 are Exp are $
+# $Id: firewall.sh,v 1.38 2010/08/17 15:17:05 are Exp are $
 #
 
 # Do NOT "set -e"
@@ -162,7 +162,7 @@ lihas_ipt_dnat () {
       if [ $dport == "0" ]; then
         echo "-A pre-$iface -d $dnet -p $proto -j DNAT --to-destination $mnet" >> $FILEnat
       else
-        $ndport=$(echo $ndport | sed 's/:/-/g')
+        ndport=$(echo $ndport | sed 's/:/-/g')
         if [ $proto == "icmp" ]; then
           echo "-A pre-$iface -d $dnet -p $proto --icmp-type $dport -j DNAT --to-destination $mnet:$ndport" >> $outfile
         else 
