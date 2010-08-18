@@ -49,6 +49,7 @@ build () {
 		$FAKEROOT chown -R root:root  $PKG
 
 		cp README $PKG/$docpath/
+		cp CHANGELOG $PKG/$docpath/
 
 		#echo "ln -sf /etc/firewall.lihas.d/firewall.sh $initpath/firewall-lihas" > $postinstall
 		cd $PKG/etc/init.d/

@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.38 2010/08/17 15:17:05 are Exp are $
+# $Id: firewall.sh,v 1.39 2010/08/17 15:31:28 are Exp are $
 #
 
 # Do NOT "set -e"
@@ -107,7 +107,7 @@ done
 echo "Setting up Chains"
 for iface in interface-*; do
   iface=${iface#interface-}
-  if [ ${iface} -eq "lo" ]; then
+  if [ ${iface} == "lo" ]; then
     echo "-A OUTPUT -j in-$iface" >> $FILEfilter
   else
     [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
@@ -355,22 +355,28 @@ for policy in policy-routing-*; do
     key=$(cat policy-routing-$policy/key)
     if [ -e policy-routing-$policy/gateway ]; then
       cat policy-routing-$policy/gateway | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
-      while read type interface; do
+      while read type interface gateway; do
+        ip route flush table $policy
         if [ $type == "PPP" ]; then
-          ip route flush table $policy
-        ip route ls |
-        sed 's/^default.*/default dev '$interface'/' |
-        while read a; do
-          ip route add $a table $policy
-        done
+          ip route ls |
+          sed 's/^default.*/default dev '$interface'/' |
+          while read a; do
+            ip route add $a table $policy
+          done
+        elif [ $type == "NET" ]; then
+          ip route ls |
+          sed 's/^default.*/default dev '$interface' via '$gateway'/' |
+          while read a; do
+            ip route add $a table $policy
+          done
+        else
+          echo Non PPP/NET-Policy-Routing is not implemented
+        fi
         while ip rule | grep 'lookup '$policy; do
           ip rule del fwmark $key table $policy
         done
         ip rule add fwmark $key table $policy
         ip route flush cache
-        else
-          echo Non PPP-Policy-Routing is not implemented
-	fi
       done
     fi
   fi

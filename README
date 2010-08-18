@@ -1,4 +1,4 @@
-# $Id: README,v 1.8 2008/08/14 13:18:29 are Exp are $
+# $Id: README,v 1.9 2010/05/28 11:39:40 are Exp are $
 
 - 1 Verzeichnis pro Interface nach dem Muster
     interface-NAME
@@ -60,7 +60,9 @@
     Defaultgateway, Syntax:
     TYP	INTERFACE [IP]
     PPP     ppp0
-    -> ppp0 wird das Defaultgateway, andere Arten sind noch nicht unterstuetzt
+    -> ppp0 wird das Defaultgateway, Point-to-Point-Adresse noetig
+    NET     eth6    10.4.2.1
+    -> 10.4.2.1 ueber eth6 wird das Defaultgateway
   - policy-routing-TABELLENNAME/key
     Zahl die mit fwmark gesetzt wird, sollte eindeutig sein pro System
 
