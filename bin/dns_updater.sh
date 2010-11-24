@@ -81,7 +81,7 @@ function dns_expander_cname {
   HOSTORIG=$1
   HOSTCNAME=$2
   dig $HOSTCNAME a |
-  sed -n '/^'$HOSTCNAME'.[ \t]\+/p' |
+  sed -n '/^'$HOSTCNAME'[ \t]\+/p' |
   while read host ttl dummy type ip; do
     if [ $type == 'A' ]; then
       echo "SELECT count(*), '$host', '$ip', '$ttl' FROM dnshistory WHERE active=1 AND hostname='$host' AND ip='$ip';"
@@ -96,7 +96,7 @@ echo "SELECT hostname FROM hostnames;" |
 sqlite3 ${DATABASE} |
 while read host; do
   dig $host a |
-  sed -n '/^'$host'.[ \t]\+/p' |
+  sed -n '/^'$host'[ \t]\+/p' |
   while read host ttl dummy type ip; do
     if [ $type == 'A' ]; then
       echo "SELECT count(*), '$host', '$ip', '$ttl' FROM dnshistory WHERE active=1 AND hostname='$host' AND ip='$ip';"
