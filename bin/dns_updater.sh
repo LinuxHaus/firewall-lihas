@@ -1,12 +1,49 @@
 #!/bin/bash
 
+# different locales -> different dig-output -> broken rules
 LANG=C
 LC_ALL=C
 export LANG LC_ALL
 
-DATABASE=/tmp/db
+DATABASE=/var/lib/firewall-lihas/db.sqlite
+DATABASE_PATH=$(sed 's/\/[^\/]\+$//' <<< $DATABASE )
 RELOADFW=0;
 UNIXTIME=$(date +%s)
+
+function create_db {
+
+  if [ ! -e $DATABASE_PATH ]; then
+    mkdir -p $DATABASE_PATH
+  fi
+
+echo "
+CREATE TABLE IF NOT EXISTS hostnames ( hostname TEXT NOT NULL );                                                                                                                             
+CREATE TABLE IF NOT EXISTS dnshistory ( hostname        TEXT NOT NULL,                                                                                                                       
+                                        ip              TEXT NOT NULL,                                                                                                                       
+                                        time_first      INTEGER NOT NULL,                                                                                                                    
+                                        time_valid_till INTEGER NOT NULL,                                                                                                                    
+                                        active          INTEGER NOT NULL                                                                                                                     
+ );                                                                                                                                                                                          
+CREATE TABLE IF NOT EXISTS hostnames_current (                                                                                                                                               
+        hostname TEXT NOT NULL,                                                                                                                                                              
+        time_first INTEGER NOT NULL,                                                                                                                                                         
+        time_valid_till INTEGER NOT NULL,                                                                                                                                                    
+        ip TEXT NOT NULL                                                                                                                                                                     
+);                                                                                                                                                                                           
+CREATE INDEX IF NOT EXISTS activedns ON dnshistory (active, hostname);                                                                                                                       
+CREATE TABLE IF NOT EXISTS vars_num ( name  TEXT NOT NULL,                                                                                                                                  
+                                      value INTEGER                                                                                                                                          
+                                    );                                                                                                                                                       
+" | sqlite3 ${DATABASE}
+  if [ $? -ne 0 ]; then
+    echo Database creation/update failed >&2
+    exit 1
+  fi
+
+}
+
+create_db
+
 
 function check_reload {
   echo "SELECT value FROM vars_num WHERE name='reload';" | sqlite3 ${DATABASE}
@@ -40,14 +77,33 @@ if [ $ACTIVEHOSTS1 -ne $ACTIVEHOSTS2 ]; then
   echo "UPDATE vars_num SET value=value+1 WHERE name='reload';" | sqlite3 ${DATABASE}
 fi
 
+function dns_expander_cname {
+  HOSTORIG=$1
+  HOSTCNAME=$2
+  dig $HOSTCNAME a |
+  sed -n '/^'$HOSTCNAME'.[ \t]\+/p' |
+  while read host ttl dummy type ip; do
+    if [ $type == 'A' ]; then
+      echo "SELECT count(*), '$host', '$ip', '$ttl' FROM dnshistory WHERE active=1 AND hostname='$host' AND ip='$ip';"
+      echo "INSERT INTO hostnames_current (hostname, time_first, time_valid_till, ip) VALUES ('$HOSTORIG', $UNIXTIME, $UNIXTIME+$ttl, '$ip');"
+    elif [ $type == 'CNAME' ]; then
+      dns_expander_cname $HOSTORIG $HOSTCNAME
+    fi
+  done
+}
+
 echo "SELECT hostname FROM hostnames;" |
 sqlite3 ${DATABASE} |
 while read host; do
-  dig -t a $host |
-  sed '/^$/d; /^\;/d' |
-  while read host ttl dummy dummy ip; do
-    echo "SELECT count(*), '$host', '$ip', '$ttl' FROM dnshistory WHERE active=1 AND hostname='$host' AND ip='$ip';"
-    echo "INSERT INTO hostnames_current (hostname, time_first, time_valid_till, ip) VALUES ('$host', $UNIXTIME, $UNIXTIME+$ttl, '$ip');"
+  dig $host a |
+  sed -n '/^'$host'.[ \t]\+/p' |
+  while read host ttl dummy type ip; do
+    if [ $type == 'A' ]; then
+      echo "SELECT count(*), '$host', '$ip', '$ttl' FROM dnshistory WHERE active=1 AND hostname='$host' AND ip='$ip';"
+      echo "INSERT INTO hostnames_current (hostname, time_first, time_valid_till, ip) VALUES ('$host', $UNIXTIME, $UNIXTIME+$ttl, '$ip');"
+    elif [ $type == 'CNAME' ]; then
+      dns_expander_cname $host $ip
+    fi
   done
 done |
 sqlite3 ${DATABASE} | sed 's/|/ /g' |
