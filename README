@@ -1,4 +1,4 @@
-# $Id: README,v 1.9 2010/05/28 11:39:40 are Exp are $
+# $Id: README,v 1.10 2010/08/18 16:07:29 are Exp are $
 
 - 1 Verzeichnis pro Interface nach dem Muster
     interface-NAME
@@ -73,6 +73,10 @@
     1 Zeile pro Port der dazu gehoert, wenn die urspruengliche Datei
     als Protokoll nay' enthaelt, werden alle Zeile eingefuegt, wenn
     nicht nur die mit dem entsprechenden Protokoll
+
+- DNS-Aufloesung, dns-* Namen
+  - Hierfuer muss der firewall-lihas-dns Cronjob installiert werden
+  - Alle dns-* Statements werden aus interface-*, include und groups genommen und, falls die TTL abgelaufen ist, neu aufgeloest.:q
 
 Berechtigungen und DNAT werden an dem Interface konfiguriert, an dem der Client haengt.
 SNAT und Masquerading werden am ausgehenden Interface konfiguriert.
