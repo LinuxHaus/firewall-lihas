@@ -1,0 +1,4 @@
+Mi 18. Aug 18:07:48 CEST 2010, are
+- interface-lo/* ist nun fuer vom Firewall abgehende Verbindungen gueltig
+- policy-routung unterstuetzt IPs als Defaultgateway, zusaetzlich zum bisherigen ppp-Interface
+
