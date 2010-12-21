@@ -1,5 +1,5 @@
 #!/bin/bash
-# $Id$
+# $Id: dns_updater.sh,v 1.6 2010/12/21 07:49:42 are Exp are $
 
 # different locales -> different dig-output -> broken rules
 LANG=C
@@ -78,32 +78,15 @@ if [ $ACTIVEHOSTS1 -ne $ACTIVEHOSTS2 ]; then
   echo "UPDATE vars_num SET value=value+1 WHERE name='reload';" | sqlite3 ${DATABASE}
 fi
 
-function dns_expander_cname {
-  HOSTORIG=$1
-  HOSTCNAME=$2
-  dig $HOSTCNAME a |
-  sed -n '/^'$HOSTCNAME'[ \t]\+/p' |
-  while read host ttl dummy type ip; do
-    if [ $type == 'A' ]; then
-      echo "SELECT count(*), '$host', '$ip', '$ttl' FROM dnshistory WHERE active=1 AND hostname='$host' AND ip='$ip';"
-      echo "INSERT INTO hostnames_current (hostname, time_first, time_valid_till, ip) VALUES ('$HOSTORIG', $UNIXTIME, $UNIXTIME+$ttl, '$ip');"
-    elif [ $type == 'CNAME' ]; then
-      dns_expander_cname $HOSTORIG $HOSTCNAME
-    fi
-  done
-}
-
 echo "SELECT hostname FROM hostnames;" |
 sqlite3 ${DATABASE} |
 while read host; do
   dig $host a |
   sed -n '/^'$host'[ \t]\+/p' |
-  while read host ttl dummy type ip; do
+  while read host1 ttl dummy type ip; do
     if [ $type == 'A' ]; then
       echo "SELECT count(*), '$host', '$ip', '$ttl' FROM dnshistory WHERE active=1 AND hostname='$host' AND ip='$ip';"
       echo "INSERT INTO hostnames_current (hostname, time_first, time_valid_till, ip) VALUES ('$host', $UNIXTIME, $UNIXTIME+$ttl, '$ip');"
-    elif [ $type == 'CNAME' ]; then
-      dns_expander_cname $host $ip
     fi
   done
 done |
