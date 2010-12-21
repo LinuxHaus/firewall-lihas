@@ -1,4 +1,5 @@
 #!/bin/bash
+# $Id$
 
 # different locales -> different dig-output -> broken rules
 LANG=C
