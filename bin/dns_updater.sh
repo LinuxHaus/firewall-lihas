@@ -1,5 +1,5 @@
 #!/bin/bash
-# $Id: dns_updater.sh,v 1.6 2010/12/21 07:49:42 are Exp are $
+# $Id: dns_updater.sh,v 1.7 2010/12/21 08:13:05 are Exp are $
 
 # different locales -> different dig-output -> broken rules
 LANG=C
@@ -81,8 +81,7 @@ fi
 echo "SELECT hostname FROM hostnames;" |
 sqlite3 ${DATABASE} |
 while read host; do
-  dig $host a |
-  sed -n '/^'$host'[ \t]\+/p' |
+  dig $host a | sed '1,/^;; ANSWER SECTION/d; /^$/,$d' |
   while read host1 ttl dummy type ip; do
     if [ $type == 'A' ]; then
       echo "SELECT count(*), '$host', '$ip', '$ttl' FROM dnshistory WHERE active=1 AND hostname='$host' AND ip='$ip';"
