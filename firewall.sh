@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.39 2010/08/17 15:31:28 are Exp are $
+# $Id: firewall.sh,v 1.40 2010/08/18 16:05:56 are Exp $
 #
 
 # Do NOT "set -e"
@@ -402,35 +402,58 @@ done
 echo LOCALHOST
 . ./localhost
 
-# Disable specific logging
 echo "Disable some logging"
+lihas_ipt_nolog () {
+  outfile=$1
+  snet=$2
+  dnet=$3
+  proto=$4
+  dport=$5
+  oiface=$6
+  if [ "$snet" == "include" ]; then
+    if [ -e "$dnet" ]; then
+      cat $dnet | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+      while read snet dnet proto dport oiface; do
+        lihas_ipt_nolog "$outfile" "$snet" "$dnet" "$proto" "$dport" "$oiface"
+      done
+    else
+      echo "$snet doesn't exist"
+    fi
+  else
+    if [ $dport == "0" ]; then
+      if [ "ga$oiface" == "ga" ]; then
+        echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -j DROP" >> $outfile
+        echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto -j DROP" >> $outfile
+      else
+        echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -o $oiface -j DROP" >> $outfile
+      fi
+    else
+      if [ "ga$oiface" == "ga" ]; then
+        if [ $proto == "icmp" ]; then
+          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j DROP" >> $outfile
+          echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j DROP" >> $outfile
+        else 
+          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j DROP" >> $outfile
+          echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j DROP" >> $outfile
+        fi
+      else
+        if [ $proto == "icmp" ]; then
+          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -o $oiface -j DROP" >> $outfile
+        else 
+          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -o $oiface -j DROP" >> $outfile
+        fi
+      fi
+    fi
+  fi
+}
+
 for iface in interface-*; do
   iface=${iface#interface-}
   if [ -e interface-$iface/nolog ]; then
     [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
     cat interface-$iface/nolog | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read snet dnet proto dport oiface; do
-      if [ $dport == "0" ]; then
-        if [ "ga$oiface" == "ga" ]; then
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -j DROP" >> $FILEfilter
-          echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto -j DROP" >> $FILEfilter
-        else
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -o $oiface -j DROP" >> $FILEfilter
-        fi
-      else
-        if [ "ga$oiface" == "ga" ]; then
-          if [ $proto == "icmp" ]; then
-            echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -o $oiface -j ACCEPT" >> $FILEfilter
-            echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j DROP" >> $FILEfilter
-            echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j DROP" >> $FILEfilter
-          else 
-            echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j DROP" >> $FILEfilter
-            echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j DROP" >> $FILEfilter
-	  fi
-        else
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -o $oiface -j DROP" >> $FILEfilter
-        fi
-      fi
+      lihas_ipt_nolog "$FILEfilter" "$snet" "$dnet" "$proto" "$dport" "$oiface"
     done
   fi
 done
