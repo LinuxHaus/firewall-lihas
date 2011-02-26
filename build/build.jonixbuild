@@ -15,7 +15,7 @@ author="Adrian Reyer" #programmer/s of the souce-code
 website="http://www.lihas.de/"
 ARCH=noarch
 depends="coreutils"  # bash (>= 2.0a ) # needs to be filled to be a good deb-package
-conffiles="/etc/firewall.lihas.d/localhost,/etc/firewall.lihas.d/include/dnat,/etc/firewall.lihas.d/groups/hostgroup-testhosts1,/etc/firewall.lihas.d/groups/portgroup-dns,/etc/firewall.lihas.d/groups/hostgroup-testhosts,/etc/firewall.lihas.d/policy-routing-dsl/comment,/etc/firewall.lihas.d/policy-routing-dsl/key,/etc/firewall.lihas.d/policy-routing-dsl/gateway,/etc/firewall.lihas.d/interface-eth99/comment,/etc/firewall.lihas.d/interface-eth99/network,/etc/firewall.lihas.d/interface-eth99/dnat,/etc/firewall.lihas.d/interface-eth99/snat,/etc/firewall.lihas.d/interface-eth99/privclients,/etc/firewall.lihas.d/interface-eth99/extra,/etc/firewall.lihas.d/interface-eth99/masquerade,/etc/firewall.lihas.d/interface-eth99/policy-routing"
+conffiles="/etc/firewall.lihas.d/localhost,/etc/firewall.lihas.d/include/dnat,/etc/firewall.lihas.d/groups/hostgroup-testhosts1,/etc/firewall.lihas.d/groups/portgroup-dns,/etc/firewall.lihas.d/groups/hostgroup-testhosts,/etc/firewall.lihas.d/policy-routing-dsl/comment,/etc/firewall.lihas.d/policy-routing-dsl/key,/etc/firewall.lihas.d/policy-routing-dsl/gateway"
 #suggests=
 #recommends=
 copyright=GPL
