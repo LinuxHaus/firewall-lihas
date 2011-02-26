@@ -45,7 +45,7 @@ build () {
 		$FAKEROOT install -m 0755 firewall.sh $PKG/etc/firewall.lihas.d/
 		cp -a iptables-accept $PKG/etc/firewall.lihas.d
 		cp -a policy-routing-dsl $PKG/etc/firewall.lihas.d
-		cp -a interface-eth0 $PKG/etc/firewall.lihas.d/interface-eth99
+		cp -a interface-eth0 $PKG/$docpath/interface-eth99
 		$FAKEROOT chown -R root:root  $PKG
 
 		cp README $PKG/$docpath/
