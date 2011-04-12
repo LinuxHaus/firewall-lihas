@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.41 2011/02/26 17:41:29 are Exp are $
+# $Id: firewall.sh,v 1.42 2011/04/12 12:43:29 are Exp are $
 #
 
 # Do NOT "set -e"
@@ -148,9 +148,9 @@ lihas_ipt_nonat () {
     fi
   else
     if [ $dport == "0" ]; then
-      echo "-A pre-$iface -s $snet -d $dnet -p $proto -j ACCEPT " >> $FILEnat
+      echo "-A post-$iface -s $snet -d $dnet -p $proto -j ACCEPT " >> $FILEnat
     else
-      echo "-A pre-$iface -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT" >> $outfile
+      echo "-A post-$iface -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT" >> $outfile
     fi
   fi
 }
