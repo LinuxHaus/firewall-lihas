@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.40 2010/08/18 16:05:56 are Exp $
+# $Id: firewall.sh,v 1.41 2011/02/26 17:41:29 are Exp are $
 #
 
 # Do NOT "set -e"
@@ -129,6 +129,42 @@ done
 echo "Loopback Interface is fine"
 echo "-A OUTPUT	-j ACCEPT -o lo" >> $FILEfilter
 echo "-A INPUT	-j ACCEPT -i lo" >> $FILEfilter
+
+echo "Avoiding NAT"
+lihas_ipt_nonat () {
+  outfile=$1
+  snet=$2
+  dnet=$3
+  proto=$4
+  dport=$5
+  if [ $snet == "include" ]; then
+    if [ -e $snet ]; then
+      cat $mnet | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+      while read snet dnet proto dport; do
+        lihas_ipt_nonat "$outfile" "$snet" "$dnet" "$proto" "$dport"
+      done
+    else
+      echo "$snet doesn't exist"
+    fi
+  else
+    if [ $dport == "0" ]; then
+      echo "-A pre-$iface -s $snet -d $dnet -p $proto -j ACCEPT " >> $FILEnat
+    else
+      echo "-A pre-$iface -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT" >> $outfile
+    fi
+  fi
+}
+
+for iface in interface-*; do
+  iface=${iface#interface-}
+  if [ -e interface-$iface/nonat ]; then
+    [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
+    cat interface-$iface/nonat | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+    while read snet dnet proto dport; do
+      lihas_ipt_nonat "$FILEnat" "$snet" "$dnet" "$proto" "$dport"
+    done
+  fi
+done
 
 echo "Adding DNAT"
 lihas_ipt_dnat () {
