@@ -1,4 +1,4 @@
-# $Id: README,v 1.10 2010/08/18 16:07:29 are Exp are $
+# $Id: README,v 1.11 2010/11/24 22:02:45 are Exp are $
 
 - 1 Verzeichnis pro Interface nach dem Muster
     interface-NAME
@@ -26,6 +26,9 @@
     Format: OrigTARG NewTARG PROTO OrigPORT[:RANGE] NewPORT
     Alternativ, um ein dnat zu verhindern:
       ACCEPT SourceIP PROTO OrigPORT[:RANGE]
+  - interface-NAME/nonat
+      SRC-NET DST-NET PROTO PORT
+    Pakete von SRC-NET nach DST-NET werden nichtdurch SNAT/DNAT/MASQUERADE behandelt
   - interface-NAME/nolog 
     Verbindungen hier werden nicht geloggt. Syntax wie bei privclients, allerdings mit DROP als Ergebnis statt ACCEPT
   - interface-NAME/policy-routing 
