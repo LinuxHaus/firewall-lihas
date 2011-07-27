@@ -7,7 +7,7 @@ helper_hostgroup () {
       cat groups/$hostgroup_replace | sed '/^[ \t]*$/d; /^#/d' |
       while read name; do
         name=$( echo $name | sed 's#/#\\/#g' )
-        repl=$( echo $replacement | sed 's/'"$hostgroup_replace"'/'"$name"'/' )
+        repl=$( echo $replacement | sed 's/'"$hostgroup_replace"'\([ \t]\)/'"$name"'\1/' )
         if echo $repl | grep '\b'hostgroup- > /dev/null; then
           echo $repl | helper_hostgroup
         else
