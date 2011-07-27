@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.42 2011/04/12 12:43:29 are Exp are $
+# $Id: firewall.sh,v 1.43 2011/04/12 13:42:47 are Exp are $
 #
 
 # Do NOT "set -e"
@@ -129,6 +129,11 @@ done
 echo "Loopback Interface is fine"
 echo "-A OUTPUT	-j ACCEPT -o lo" >> $FILEfilter
 echo "-A INPUT	-j ACCEPT -i lo" >> $FILEfilter
+
+if [ -e ./script-pre ]; then
+  echo "Hook: script-pre"
+  . ./script-pre
+fi
 
 echo "Avoiding NAT"
 lihas_ipt_nonat () {
@@ -498,6 +503,10 @@ for chain in INPUT OUTPUT FORWARD; do
   echo "-A $chain -j LOG" >> $FILEfilter
 done
 
+if [ -e ./script-post ]; then
+  echo "Hook: script-post"
+  . ./script-post
+fi
 
 echo *filter > $FILE
 cat $FILEfilter >> $FILE
