@@ -1,5 +1,5 @@
 #!/bin/bash
-# $Id: dns_updater.sh,v 1.8 2010/12/22 20:02:29 are Exp $
+# $Id$
 
 # different locales -> different dig-output -> broken rules
 LANG=C

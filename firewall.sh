@@ -12,7 +12,7 @@
 ### END INIT INFO
 
 # Author: Adrian Reyer <are@lihas.de>
-# $Id: firewall.sh,v 1.44 2011/07/27 06:42:51 are Exp $
+# $Id$
 #
 
 # Do NOT "set -e"
