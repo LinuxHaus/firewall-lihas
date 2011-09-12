@@ -1,0 +1,3 @@
+# OFF-IP PRIV-IP PROTO OFF-PORT PRIV-PORT
+# Redirect Web
+1.1.1.1	1.1.1.2	tcp	80	8080

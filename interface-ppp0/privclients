@@ -1,0 +1,5 @@
+# SRC DST PROTO PORT:RANGE
+# Mail
+0.0.0.0/0	10.0.0.2	tcp	25
+# OpenVPN
+0.0.0.0/0	10.0.0.3	udp	1194

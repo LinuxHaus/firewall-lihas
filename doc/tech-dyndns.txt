@@ -1,0 +1,48 @@
+$Id: tech-dyndns.txt,v 1.2 2010/11/24 22:02:35 are Exp $
+
+DNS als Hostnamen:
+Ab und an ist es sinnvoll, DNS-Hostnamen als Quelle fuer IP-Adressen zu
+nutzen.
+Problematik:
+- Der DNS-Server muss funktionieren, wenn das nicht der Fall ist, gibt
+  es zu wenig Regeln
+- DNS-Eintraege koennen sich aendern, muessen also regelmaessig
+  ueberprueft werden
+
+Abhaengigkeiten:
+  sqlite3
+
+Technik:
+- Ein unabhaengiges Skript aktualisiert regelmaessig eine lokale
+  Zuordnung von Namen zu Adressen
+- Es wird eine sqlite Tabelle vorgehalten mit folgenden Informationen:
+  - Domain
+  - zugeordnete IP
+  - Lookup-Timestamp des ersten Eintrags dieser Domain mit der jetzigen
+    IP als Resultat
+  - letzte Lookuptimestamp + TTL
+  - aktiv ja/nein 1/0
+- Es wird die Konfiguration nach dns-* Referenzen durchsucht, fuer diese
+  wird das DNS geprueft.
+- Diese Tabelle wird am Skriptende in die Datei ueberfuehrt, das
+  firewall-Skript selbst macht kein sqlite
+
+Datenbankinitialisierung:
+CREATE TABLE IF NOT EXISTS hostnames ( hostname TEXT NOT NULL );
+CREATE TABLE IF NOT EXISTS dnshistory ( hostname        TEXT NOT NULL,
+                                        ip              TEXT NOT NULL,
+                                        time_first      INTEGER NOT NULL,
+                                        time_valid_till INTEGER NOT NULL,
+                                        active          INTEGER NOT NULL
+ );
+CREATE TABLE IF NOT EXISTS hostnames_current (
+        hostname TEXT NOT NULL,
+        time_first INTEGER NOT NULL,
+        time_valid_till INTEGER NOT NULL,
+        ip TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS activedns ON dnshistory (active, hostname);
+CREATE TABLE IF NOT EXISTS vars_num ( name   TEXT NOT NULL,
+                                      value INTEGER
+                                    );
+

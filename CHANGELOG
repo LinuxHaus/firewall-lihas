@@ -1,0 +1,13 @@
+Di 12. Apr 14:43:40 CEST 2011, are
+- 'nonat'-Tabelle verhindert NAT
+
+Sa 26. Feb 18:43:41 CET 2011, are
+- interface-*/nolog kann nun die Syntax von privclients, einschliesslich includes
+
+Do 25. Nov 10:37:11 CET 2010, are
+- DNS-Support auch fuer dynamische DNS-Adressen
+- neue Abhaengigkeiten: dnsutils, sqlite3
+
+Mi 18. Aug 18:07:48 CEST 2010, are
+- interface-lo/* ist nun fuer vom Firewall abgehende Verbindungen gueltig
+- policy-routung unterstuetzt IPs als Defaultgateway, zusaetzlich zum bisherigen ppp-Interface
