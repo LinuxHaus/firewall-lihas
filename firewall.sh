@@ -109,6 +109,8 @@ for iface in interface-*; do
   iface=${iface#interface-}
   if [ ${iface} == "lo" ]; then
     echo "-A OUTPUT -j in-$iface" >> $FILEfilter
+    echo "-A OUTPUT -j pre-$iface" >> $FILEnat
+    echo "-A POSTROUTING -o $iface -j post-$iface" >> $FILEnat
   else
     [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
     if [ -e interface-$iface/network ]; then
