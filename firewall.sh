@@ -24,6 +24,10 @@ NAME=firewall
 DAEMON=/bin/true
 SCRIPTNAME=/etc/init.d/$NAME
 
+# Default values
+# LOG: LOG-Chain, mostly useful: LOG ULOG
+LOG=LOG
+
 # Exit if the package is not installed
 [ -x "$DAEMON" ] || exit 0
 
@@ -94,8 +98,8 @@ for iface in interface-*; do
     while read network; do
       echo "-A PREROUTING -p esp -j MARK --set-mark 8000/0000" >> $FILEmangle
       echo "-A PREROUTING -p ah -j MARK --set-mark 8000/0000" >> $FILEmangle
-      echo "-A in-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j LOG" >> $FILEfilter
-      echo "-A fwd-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j LOG" >> $FILEfilter
+      echo "-A in-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j $LOG" >> $FILEfilter
+      echo "-A fwd-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j $LOG" >> $FILEfilter
       echo "-A in-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j DROP" >> $FILEfilter
       echo "-A fwd-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j DROP" >> $FILEfilter
     done
@@ -502,7 +506,7 @@ for iface in interface-*; do
 done
 
 for chain in INPUT OUTPUT FORWARD; do
-  echo "-A $chain -j LOG" >> $FILEfilter
+  echo "-A $chain -j $LOG" >> $FILEfilter
 done
 
 if [ -e ./script-post ]; then

@@ -2,17 +2,23 @@
 <!-- Stand: Fri Mar 16 13:36:58 CET 2012 -->
 <applicationconfig version="0.2">
 <application name="LiHAS-Firewall">
-  <policies count="2">
+  <policies count="1">
     <policy
       name="dsl"               cmt0="name der policy"
       interface="eth1"             cmt1="interface der bevorzugten defaultroute fuer diese policy"
     >
-      <interface gwmethod="fixed" name="eth1" gwaddr="192.168.253.2" priority="0" />
+      <interface gwmethod="fixed" name="eth1" gwaddr="192.168.253.6" priority="0" />
       <!-- gwmethod: Defaultroute: fixed = feste ip, ppp = ppp-peer, dhcp = gw dynamisch aus dhcp, braucht isc-dhcp-client und /etc/dhcp/dhclient-enter-hooks.d/firewall-lihas -->
-      <interface gwmethod="fixed" name="eth1" gwaddr="192.168.253.2" priority="1" />
+      <interface gwmethod="fixed" name="eth1" gwaddr="192.168.253.7" priority="1" />
     </policy>
   </policies>
-  <tests count="2">
+  <dns>
+    <host name="lihas.de"/>
+    <host name="fritz3.dyn.lihas.de"/>
+    <host name="fritz4.dyn.lihas.de"/>
+    <host name="fritz5.dyn.lihas.de"/>
+  </dns>
+  <tests count="2" active="1">
     <!--
     <test
       name=""                   cmt0="name des tests"
@@ -25,12 +31,12 @@
       latency_max=""            cmt7="maximale latenz in sekunden"
       latency_avg=""            cmt8="durchschnittliche latenz in sekunden"
       latency_interval=""       cmt9="anzahl messwerte, ueber die der durchschnitt gebildet wird"
-      
+      active=""                 cmt10="1: tests werden gemacht, 0: keine tests"
     />
     -->
     <test
-      name="ping_192_168_253_2" cmt0="name des tests"
-      host="192.168.253.2"      cmt1="hostname oder ip des zu pruefenden systems"
+      name="ping_192_168_253_6" cmt0="name des tests"
+      host="192.168.253.6"      cmt1="hostname oder ip des zu pruefenden systems"
       protocol="icmp"           cmt2="icmp | tcp | udp"
       port=""                   cmt3="fuer tcp und udp"
       srcip=""                  cmt4="quell-ip fuer den test (optional)"
@@ -41,8 +47,8 @@
       latency_interval=""       cmt9="anzahl messwerte, ueber die der durchschnitt gebildet wird"
     />
     <test
-      name="ping_192_168_253_5" cmt0="name des tests"
-      host="192.168.253.5"      cmt1="hostname oder ip des zu pruefenden systems"
+      name="ping_192_168_253_7" cmt0="name des tests"
+      host="192.168.253.7"      cmt1="hostname oder ip des zu pruefenden systems"
       protocol="icmp"           cmt2="icmp | tcp | udp"
       port=""                   cmt3="fuer tcp und udp"
       srcip=""                  cmt4="quell-ip fuer den test (optional)"
