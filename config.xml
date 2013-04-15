@@ -12,7 +12,7 @@
       <interface gwmethod="fixed" name="eth1" gwaddr="192.168.253.7" priority="1" />
     </policy>
   </policies>
-  <dns>
+  <dns active="1">
     <host name="lihas.de"/>
     <host name="fritz3.dyn.lihas.de"/>
     <host name="fritz4.dyn.lihas.de"/>
