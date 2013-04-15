@@ -27,6 +27,7 @@ use POE qw(Component::Client::Ping Component::Client::DNS);
 # use Test::More skip_all => "Derzeit keine Tests";
 use lib "lib/";
 use LiHAS::Firewall::Ping;
+use LiHAS::Firewall::DNS;
 
 sub PING_TIMEOUT () { 5 }; # seconds between pings
 sub PING_COUNT () { 1 }; # ping repetitions
@@ -34,6 +35,8 @@ sub TIMER_DELAY () { 10 }; # ping delay
 sub DEBUG () { 1 }; # display more information
 
 my $cfg = new XML::Application::Config("LiHAS-Firewall","config.xml");
+my $dns  = LiHAS::Firewall::DNS->new($cfg);
+
 my $i;
 
 my @addresses;
@@ -62,6 +65,7 @@ POE::Session->create(
     ping_client_start => \&LiHAS::Firewall::Ping::ping_client_start,
     client_send_ping => \&LiHAS::Firewall::Ping::client_send_ping,
     client_got_pong => \&LiHAS::Firewall::Ping::client_got_pong,
+    dns_response => sub { $dns->ping_client_start },
   }
 );
 
