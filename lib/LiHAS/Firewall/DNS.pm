@@ -9,43 +9,28 @@ sub TIMER_DELAY { 10 };
 sub PING_TIMEOUT () { 5 }; # seconds between pings
 sub PING_COUNT () { 1 }; # ping repetitions
 
-sub new ($) {
-  my $proto = shift;
-  my $class = ref($proto) || $proto;
-  my $self = {};
-
-  $self->{cfg} = $_[0];
-
-  my $named = POE::Component::Client::DNS->spawn(
-    Alias => "named"
-  );
-
-  bless ($self,$class);
-  bless ($named,$class);
-  return $self;
-} 
+my $named = POE::Component::Client::DNS->spawn(
+  Alias => "named"
+);
 
 #------------------------------------------------------------------------------
 # This session uses the ping component to resolve things.
 sub dns_query {
-  my $self = shift;
-  my ($kernel) = $_[KERNEL];
-
-  my $response = $self->named->resolve(
-    event   => "response",
-    host    => "localhost",
+  my ($kernel, $type, $name) = @_[KERNEL, ARG0, ARG1];
+  print "DNSquery: $type, $name\n";
+  my $response = $named->resolve(
+    event   => "dns_response",
+    host    => $name,
     context => { },
   );
   if ($response) {
-    $kernel->yield(response => $response);
+    $kernel->yield(dns_response => $response);
   }
 }
 
 sub dns_response {
-  my $self = shift;
-  my $response = $_[ARG0];
+  my ($kernel,$heap,$response) = @_[KERNEL, HEAP, ARG0];
   my @answers = $response->{response}->answer();
-  
   foreach my $answer (@answers) {
     print(
       "$response->{host} = ",
