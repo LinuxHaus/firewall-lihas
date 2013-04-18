@@ -23,16 +23,26 @@ DESC="LiHAS Firewall"
 NAME=firewall
 DAEMON=/bin/true
 SCRIPTNAME=/etc/init.d/$NAME
+CONFIGDIR=/etc/firewall.lihas.d
+LIBDIR=lib
+TMPDIR=${TMPDIR:-/tmp}
+
 
 # Default values
-# LOG: LOG-Chain, mostly useful: LOG ULOG
-LOG=LOG
+# TARGETLOG: LOG-Chain, mostly useful: LOG ULOG
+TARGETLOG=LOG
 
 # Exit if the package is not installed
 [ -x "$DAEMON" ] || exit 0
 
 # Read configuration variable file if it is present
 [ -r /etc/default/$NAME ] && . /etc/default/$NAME
+
+FILE=$TMPDIR/iptables
+FILEfilter=$TMPDIR/iptables-filter
+FILEnat=$TMPDIR/iptables-nat
+FILEmangle=$TMPDIR/iptables-mangle
+export CONFIGDIR LIBDIR TMPDIR FILE FILEfilter FILEnat FILEmangle TARGETLOG
 
 # Load the VERBOSE setting and other rcS variables
 . /lib/init/vars.sh
@@ -53,17 +63,45 @@ ipt_err=0
 
 set -a
 
-[ -d /etc/firewall.lihas.d ] && cd /etc/firewall.lihas.d
+[ -d "$CONFIGDIR" ] && cd "$CONFIGDIR"
 
-FILE=/tmp/iptables
-FILEfilter=/tmp/iptables-filter
-FILEnat=/tmp/iptables-nat
-FILEmangle=/tmp/iptables-mangle
 rm $FILE $FILEfilter $FILEnat $FILEmangle
 
-. lib/helper-dns.sh
-. lib/helper-group.sh
-. lib/lihas_ipt_reject.sh
+HAVE_COMMENT=0
+HAVE_LOG=0
+HAVE_ULOG=0
+# check availability of modules:
+iptables -N lihas-moduletest
+iptables -A lihas-moduletest -m comment --comment "test"
+if [ $? -eq 0 ]; then
+  HAVE_COMMENT=1
+fi
+iptables -A lihas-moduletest -j LOG --log-prefix 'test'
+if [ $? -eq 0 ]; then
+  HAVE_LOG=1
+fi
+iptables -A lihas-moduletest -j ULOG --ulog-prefix 'test'
+if [ $? -eq 0 ]; then
+  HAVE_ULOG=1
+fi
+iptables -F lihas-moduletest
+iptables -X lihas-moduletest
+
+# determine LOG target
+if [ $TARGETLOG == "LOG" ] && [ $HAVE_LOG -eq 1 ]; then
+  TARGETLOG=LOG
+elif [ $TARGETLOG == "ULOG" ] && [ $HAVE_ULOG -eq 1 ]; then
+  TARGETLOG=ULOG
+elif [ $HAVE_LOG -eq 1 ]; then
+  TARGETLOG=LOG
+elif [ $HAVE_ULOG -eq 1 ]; then
+  TARGETLOG=ULOG
+fi
+export TARGETLOG HAVE_COMMENT HAVE_LOG HAVE_ULOG
+  
+. $LIBDIR/helper-dns.sh
+. $LIBDIR/helper-group.sh
+. $LIBDIR/lihas_ipt_reject.sh
 
 echo "Allowing all established Connections"
 for chain in INPUT OUTPUT FORWARD; do
@@ -98,8 +136,8 @@ for iface in interface-*; do
     while read network; do
       echo "-A PREROUTING -p esp -j MARK --set-mark 8000/0000" >> $FILEmangle
       echo "-A PREROUTING -p ah -j MARK --set-mark 8000/0000" >> $FILEmangle
-      echo "-A in-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j $LOG" >> $FILEfilter
-      echo "-A fwd-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j $LOG" >> $FILEfilter
+      echo "-A in-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG" >> $FILEfilter
+      echo "-A fwd-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG" >> $FILEfilter
       echo "-A in-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j DROP" >> $FILEfilter
       echo "-A fwd-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j DROP" >> $FILEfilter
     done
@@ -506,7 +544,7 @@ for iface in interface-*; do
 done
 
 for chain in INPUT OUTPUT FORWARD; do
-  echo "-A $chain -j $LOG" >> $FILEfilter
+  echo "-A $chain -j $TARGETLOG" >> $FILEfilter
 done
 
 if [ -e ./script-post ]; then
@@ -530,7 +568,7 @@ do_stop () {
   iptables-restore < /etc/firewall.lihas.d/iptables-accept
 }
 
-FILE=/tmp/iptables
+FILE=$TMPDIR/iptables
 
 case "$1" in
   test)
@@ -578,7 +616,7 @@ case "$1" in
         ;;
   *)
         #echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
-        echo "Usage: $SCRIPTNAME {start|stop|restart|force-reload}" >&2
+        echo "Usage: $SCRIPTNAME {start|stop|restart|force-reload|test}" >&2
         exit 3
         ;;
 esac

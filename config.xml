@@ -5,6 +5,13 @@
   <config path="/etc/firewall.lihas.d" db_dbd="/var/lib/firewall-lihas" />
   <database>
     <dbd connectorstring="dbi:SQLite:dbname=/var/lib/firewall-lihas/db.sqlite"/>
+    <create>
+      <table name="hostnames" >CREATE TABLE IF NOT EXISTS hostnames ( hostname TEXT NOT NULL );</table>
+      <table name="dnshistory">CREATE TABLE IF NOT EXISTS dnshistory ( hostname TEXT NOT NULL, ip TEXT NOT NULL, time_first INTEGER NOT NULL, time_valid_till INTEGER NOT NULL, active INTEGER NOT NULL );</table>
+      <table name="hostnames_current">CREATE TABLE IF NOT EXISTS hostnames_current ( hostname TEXT NOT NULL, time_first INTEGER NOT NULL, time_valid_till INTEGER NOT NULL, ip TEXT NOT NULL );</table>
+      <table name="vars_num"  >CREATE TABLE IF NOT EXISTS vars_num ( name TEXT NOT NULL, value INTEGER );</table>
+      <index name="activedns" >CREATE INDEX IF NOT EXISTS activedns ON dnshistory (active, hostname);</index>
+    </create>
   </database>
   <policies count="1">
     <policy
@@ -16,7 +23,7 @@
       <interface gwmethod="fixed" name="eth1" gwaddr="192.168.253.7" priority="1" />
     </policy>
   </policies>
-  <dns active="1">
+  <dns active="1" refresh_dns_minimum="30" refresh_dns_config="300">
     <host name="lihas.de"/>
     <host name="fritz3.dyn.lihas.de"/>
     <host name="fritz4.dyn.lihas.de"/>
