@@ -27,6 +27,8 @@ CONFIGDIR=/etc/firewall.lihas.d
 LIBDIR=lib
 TMPDIR=${TMPDIR:-/tmp}
 
+DATAPATH=/var/lib/firewall-lihas
+DATABASE=$DATAPATH/db.sqlite
 
 # Default values
 # TARGETLOG: LOG-Chain, mostly useful: LOG ULOG
@@ -42,7 +44,14 @@ FILE=$TMPDIR/iptables
 FILEfilter=$TMPDIR/iptables-filter
 FILEnat=$TMPDIR/iptables-nat
 FILEmangle=$TMPDIR/iptables-mangle
-export CONFIGDIR LIBDIR TMPDIR FILE FILEfilter FILEnat FILEmangle TARGETLOG
+
+if [ -e $CONFIGDIR/config.xml ]; then
+  DATAPATH=$(xmlstarlet sel -t -v /applicationconfig/application/config/@db_dbd /etc/firewall.lihas.d/config.xml)
+  DATABASE=$DATAPATH/db.sqlite
+fi
+
+export CONFIGDIR LIBDIR TMPDIR FILE FILEfilter FILEnat FILEmangle TARGETLOG DATABASE DATAPATH
+mkdir -p "$DATAPATH"
 
 # Load the VERBOSE setting and other rcS variables
 . /lib/init/vars.sh
@@ -72,6 +81,12 @@ HAVE_LOG=0
 HAVE_ULOG=0
 # check availability of modules:
 iptables -N lihas-moduletest
+iptables -A lihas-moduletest $CONNSTATE 2>/dev/null
+if iptables-save | egrep -q 'lihas-moduletest.*-m state'; then
+  CONNSTATE="-m state --state"
+else
+  CONNSTATE="-m conntrack --ctstate"
+fi
 iptables -A lihas-moduletest -m comment --comment "test"
 if [ $? -eq 0 ]; then
   HAVE_COMMENT=1
@@ -108,7 +123,7 @@ for chain in INPUT OUTPUT FORWARD; do
   echo ":$chain DROP" >> $FILEfilter
 done
 for chain in INPUT OUTPUT FORWARD; do
-  echo "-A $chain -m state --state ESTABLISHED,RELATED -j ACCEPT" >> $FILEfilter
+  echo "-A $chain $CONNSTATE ESTABLISHED,RELATED -j ACCEPT" >> $FILEfilter
 done
 for chain in PREROUTING POSTROUTING OUTPUT; do
   echo ":$chain ACCEPT" >> $FILEnat
@@ -122,9 +137,14 @@ for iface in interface-*; do
   echo ":in-$iface -" >> $FILEfilter
   echo ":out-$iface -" >> $FILEfilter
   echo ":fwd-$iface -" >> $FILEfilter
+  echo ":dns-in-$iface -" >> $FILEfilter
+  echo ":dns-out-$iface -" >> $FILEfilter
+  echo ":dns-fwd-$iface -" >> $FILEfilter
 
   echo ":pre-$iface -" >> $FILEnat
   echo ":post-$iface -" >> $FILEnat
+  echo ":dns-pre-$iface -" >> $FILEnat
+  echo ":dns-post-$iface -" >> $FILEnat
 done
 
 echo "Setting up IPSEC Spoof Protection"
@@ -153,6 +173,9 @@ for iface in interface-*; do
     echo "-A OUTPUT -j in-$iface" >> $FILEfilter
     echo "-A OUTPUT -j pre-$iface" >> $FILEnat
     echo "-A POSTROUTING -o $iface -j post-$iface" >> $FILEnat
+    echo "-A OUTPUT -j dns-in-$iface" >> $FILEfilter
+    echo "-A OUTPUT -j dns-pre-$iface" >> $FILEnat
+    echo "-A POSTROUTING -o $iface -j dns-post-$iface" >> $FILEnat
   else
     [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
     if [ -e interface-$iface/network ]; then
@@ -161,12 +184,17 @@ for iface in interface-*; do
         echo "-A INPUT -s $network -i $iface -j in-$iface" >> $FILEfilter
         echo "-A OUTPUT -d $network -o $iface -j out-$iface" >> $FILEfilter
         echo "-A FORWARD -s $network -i $iface -j fwd-$iface" >> $FILEfilter
+        echo "-A INPUT -s $network -i $iface -j dns-in-$iface" >> $FILEfilter
+        echo "-A OUTPUT -d $network -o $iface -j dns-out-$iface" >> $FILEfilter
+        echo "-A FORWARD -s $network -i $iface -j dns-fwd-$iface" >> $FILEfilter
       done
     else
       echo "WARNING: Interface $iface has no network file"
     fi
     echo "-A PREROUTING -i $iface -j pre-$iface" >> $FILEnat
     echo "-A POSTROUTING -o $iface -j post-$iface" >> $FILEnat
+    echo "-A PREROUTING -i $iface -j dns-pre-$iface" >> $FILEnat
+    echo "-A POSTROUTING -o $iface -j dns-post-$iface" >> $FILEnat
   fi
 done
 
@@ -393,25 +421,25 @@ lihas_ipt_privclients () {
   else
     if [ $dport == "0" ]; then
       if [ "ga$oiface" == "ga" ]; then
-        echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -j ACCEPT" >> $outfile
-        echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto -j ACCEPT" >> $outfile
+        echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -j ACCEPT" >> $outfile
+        echo "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -j ACCEPT" >> $outfile
       else
-        echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -o $oiface -j ACCEPT" >> $outfile
+        echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -o $oiface -j ACCEPT" >> $outfile
       fi
     else
       if [ "ga$oiface" == "ga" ]; then
         if [ $proto == "icmp" ]; then
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j ACCEPT" >> $outfile
-          echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j ACCEPT" >> $outfile
+          echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -j ACCEPT" >> $outfile
+          echo "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -j ACCEPT" >> $outfile
         else 
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT" >> $outfile
-          echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT" >> $outfile
+          echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT" >> $outfile
+          echo "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT" >> $outfile
         fi
       else
         if [ $proto == "icmp" ]; then
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -o $oiface -j ACCEPT" >> $outfile
+          echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -o $oiface -j ACCEPT" >> $outfile
         else 
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -o $oiface -j ACCEPT" >> $outfile
+          echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -o $oiface -j ACCEPT" >> $outfile
         fi
       fi
     fi
@@ -507,25 +535,25 @@ lihas_ipt_nolog () {
   else
     if [ $dport == "0" ]; then
       if [ "ga$oiface" == "ga" ]; then
-        echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -j DROP" >> $outfile
-        echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto -j DROP" >> $outfile
+        echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -j DROP" >> $outfile
+        echo "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -j DROP" >> $outfile
       else
-        echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -o $oiface -j DROP" >> $outfile
+        echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -o $oiface -j DROP" >> $outfile
       fi
     else
       if [ "ga$oiface" == "ga" ]; then
         if [ $proto == "icmp" ]; then
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j DROP" >> $outfile
-          echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j DROP" >> $outfile
+          echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -j DROP" >> $outfile
+          echo "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -j DROP" >> $outfile
         else 
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j DROP" >> $outfile
-          echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j DROP" >> $outfile
+          echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -j DROP" >> $outfile
+          echo "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -j DROP" >> $outfile
         fi
       else
         if [ $proto == "icmp" ]; then
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -o $oiface -j DROP" >> $outfile
+          echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -o $oiface -j DROP" >> $outfile
         else 
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -o $oiface -j DROP" >> $outfile
+          echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -o $oiface -j DROP" >> $outfile
         fi
       fi
     fi
@@ -553,13 +581,16 @@ if [ -e ./script-post ]; then
 fi
 
 echo *filter > $FILE
-cat $FILEfilter >> $FILE
+cat $FILEfilter | sed '/-s dns-/d; /-s dns/d' >> $FILE
+cat $FILEfilter | sed -n '/-[sd] dns-/p' >> $DATAPATH/dns-filter
 echo COMMIT >> $FILE
 echo *mangle >> $FILE
-cat $FILEmangle >> $FILE
+cat $FILEmangle | sed '/-sd dns-/d; /-s dns/d' >> $FILE
+cat $FILEmangle | sed -n '/-[sd] dns-/p' >> $DATAPATH/dns-mangle
 echo COMMIT >> $FILE
 echo *nat >> $FILE
-cat $FILEnat >> $FILE
+cat $FILEnat | sed '/-d dns-/d; /-s dns/d' >> $FILE
+cat $FILEnat | sed -n '/-[sd] dns-/p' >> $DATAPATH/dns-nat
 echo COMMIT >> $FILE
 
 }

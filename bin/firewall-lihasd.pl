@@ -17,6 +17,12 @@
 
 # Requirements: libxml-application-config-perl
 
+=head1 NAME
+
+firewall-lihasd
+Daemon supporting firewall-lihas.de by resolving dns-names
+
+=cut
 use warnings;
 use strict;
 
@@ -40,6 +46,65 @@ my $dbh = DBI->connect($cfg->find('database/dbd/@connectorstring'));
 
 my $i;
 
+=head1 Functions
+
+=head2 firewall_reload_dns
+
+Reloads the iptables dns-* chains with current IPs from database
+=cut
+sub firewall_reload_dns {
+  my ($kernel, $session, $heap) = @_[KERNEL, SESSION, HEAP];
+  my @replacedns;
+  my ($hostname, $ip, $table);
+  my ($fh, $line, $iptupdate, $iptflush, $flushline);
+  my $sql = "SELECT hostname, ip FROM hostnames_current";
+  my $sth = $heap->{dbh}->prepare("$sql");
+  $sth->execute();
+  $sth->bind_columns(\$hostname, \$ip);
+  while ($sth->fetch()) {
+    push(@replacedns,[ "dns-$hostname", "$ip" ] );
+  }
+  push(@replacedns,[ "^-A ", "-A dns-" ] );
+  if ( -e $heap->{datapath}."/ipt_update" ) {
+    unlink $heap->{datapath}."/ipt_update";
+  }
+  open($iptupdate, ">", $heap->{datapath}."/ipt_update") or die "cannot open < ".$heap->{datapath}."/ipt_update: $!";
+  opendir(my $dh, $heap->{datapath}) || die "can't opendir ".$heap->{datapath}.": $!\n";
+  my @files = grep { /^dns-/ && -f $heap->{datapath}."/$_" } readdir($dh);
+  closedir $dh;
+  foreach my $file (@files) {
+    $table = $file;
+    $table =~ s/^dns-//;
+    open($iptflush, "iptables-save -t $table |") or die "cannot open iptables-save -t $table |: $!";
+    foreach $flushline (<$iptflush>) {
+      if ($flushline =~ m/^:dns-([^ ]*) /) {
+        print "iptables -t $table -F $1\n";
+        print $iptupdate "iptables -t $table -F $1\n";
+      }
+    }
+    close($iptflush);
+    open($fh, "<", $heap->{datapath}."/$file") or die "cannot open < ".$heap->{datapath}."/$file: $!";
+    foreach $line (<$fh>) {
+      foreach my $replace (@replacedns) {
+        $line =~ s/$replace->[0]/$replace->[1]/g;
+      }
+      if ( $line =~ m/[sd] dns-/ ) {
+        # warn "Unknown dns-reference: iptables -t $table $line";
+        next;
+      }
+      print $iptupdate "iptables -t $table ".$line;
+    }
+    close($fh);
+  }
+  close ($iptupdate);
+  chmod 0555, $heap->{datapath}."/ipt_update";
+  system($heap->{datapath}."/ipt_update");
+}
+
+=head2 firewall_find_dnsnames
+
+checks the firewall config groups/hostname-* for dns-names and adds syncs them with the list of names to be checked
+=cut
 sub firewall_find_dnsnames {
   my ($kernel, $session, $heap) = @_[KERNEL, SESSION, HEAP];
   my $line;
@@ -77,6 +142,10 @@ sub firewall_find_dnsnames {
   $kernel->delay('firewall_find_dnsnames', $heap->{refresh_dns_config});
 }
 
+=head2 firewall_create_db
+
+Setup the db according to the config.xml
+=cut
 sub firewall_create_db {
   my ($kernel, $heap) = @_[KERNEL, HEAP];
   foreach my $sql (split(/;/,$cfg->find('database/create'))) {
@@ -96,12 +165,23 @@ sub session_default {
 sub session_start {
   my ($kernel, $heap) = @_[KERNEL, HEAP];
   $heap->{dbh} = $dbh;
+  $heap->{datapath} = $cfg->find('config/@db_dbd');
+
+  # fw dns-rules need a reload for initially
+  my $sql = "DELETE FROM vars_num WHERE name=?";
+  my $sth = $heap->{dbh}->prepare($sql);
+  $sth->execute('fw_reload_dns');
+  $sql = "INSERT INTO vars_num (name, value) VALUES (?,?)";
+  $sth = $heap->{dbh}->prepare($sql);
+  $sth->execute('fw_reload_dns', 1);
+
   $heap->{refresh_dns_config} = $cfg->find('dns/@refresh_dns_config');
   $heap->{refresh_dns_minimum} = $cfg->find('dns/@refresh_dns_minimum');
   firewall_create_db(@_);
-  $kernel->delay('timer_ping', 0);
-  $kernel->delay('firewall_find_dnsnames', 0);
-  $kernel->delay('dns_update', 0);
+  $kernel->yield('timer_ping');
+  $kernel->yield('firewall_find_dnsnames');
+  $kernel->yield('dns_update');
+  $kernel->yield('firewall_reload_dns');
   return 0;
 }
 
@@ -125,6 +205,7 @@ POE::Session->create(
     dns_query => \&LiHAS::Firewall::DNS::dns_query,
     dns_response => \&LiHAS::Firewall::DNS::dns_response,
     firewall_find_dnsnames => \&firewall_find_dnsnames,
+    firewall_reload_dns => \&firewall_reload_dns,
   }
 );
 

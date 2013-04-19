@@ -8,12 +8,10 @@ helper_dns () {
     if echo $replacement | grep '\b'dns- > /dev/null; then
       dns_replace=$(echo $replacement | sed 's/.*dns-/dns-/; s/dns-\([^ \t]*\)[ \t].*/dns-\1/')
       hostname=${dns_replace#dns-}
-      ( if [ -e "$DATABASE" ]; then
-          DATABASE=/var/lib/firewall-lihas/db.sqlite
-        else
-          host -t a $hostname | sed 's/^.*[ \t]\+//'
-        fi
-      ) | while read ip; do
+      if [ -e "$DATABASE" ]; then
+        echo "$replacement"
+      else
+        host -t a $hostname | sed 's/^.*[ \t]\+//' | while read ip; do
         if echo $ip | egrep -q '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
           repl=$( echo $replacement | sed s/$dns_replace/$ip/ )
           if echo $repl | grep '\b'dns- > /dev/null; then
@@ -24,7 +22,8 @@ helper_dns () {
         else
           echo >&2 "$hostname DNS lookup timed out"
         fi
-      done
+        done
+      fi
     else
       echo $replacement
     fi
