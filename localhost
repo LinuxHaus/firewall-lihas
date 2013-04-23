@@ -2,15 +2,15 @@
 
 # outgoing query udp & tcp
 # Der Firewall selbst
-echo "-A OUTPUT   -j ACCEPT -p udp --dport 53   -m state --state NEW" >> $FILEfilter
-echo "-A OUTPUT   -j ACCEPT -p tcp --dport 53   -m state --state NEW" >> $FILEfilter
-echo "-A OUTPUT   -j ACCEPT -p tcp --dport 22   -m state --state NEW" >> $FILEfilter
-echo "-A OUTPUT   -j ACCEPT -p tcp --dport 21   -m state --state NEW" >> $FILEfilter
-echo "-A OUTPUT   -j ACCEPT -p tcp --dport 80   -m state --state NEW" >> $FILEfilter
-echo "-A OUTPUT   -j ACCEPT -p tcp --dport 443  -m state --state NEW" >> $FILEfilter
-echo "-A OUTPUT   -j ACCEPT -p tcp --dport 9999 -m state --state NEW" >> $FILEfilter
-echo "-A OUTPUT   -j ACCEPT -p udp --dport 123  -m state --state NEW" >> $FILEfilter
-echo "-A INPUT    -j ACCEPT -p tcp --dport 22   -m state --state NEW" >> $FILEfilter
+echo "-A OUTPUT   -j ACCEPT -p udp --dport 53   $CONNSTATE NEW" >> $FILEfilter
+echo "-A OUTPUT   -j ACCEPT -p tcp --dport 53   $CONNSTATE NEW" >> $FILEfilter
+echo "-A OUTPUT   -j ACCEPT -p tcp --dport 22   $CONNSTATE NEW" >> $FILEfilter
+echo "-A OUTPUT   -j ACCEPT -p tcp --dport 21   $CONNSTATE NEW" >> $FILEfilter
+echo "-A OUTPUT   -j ACCEPT -p tcp --dport 80   $CONNSTATE NEW" >> $FILEfilter
+echo "-A OUTPUT   -j ACCEPT -p tcp --dport 443  $CONNSTATE NEW" >> $FILEfilter
+echo "-A OUTPUT   -j ACCEPT -p tcp --dport 9999 $CONNSTATE NEW" >> $FILEfilter
+echo "-A OUTPUT   -j ACCEPT -p udp --dport 123  $CONNSTATE NEW" >> $FILEfilter
+echo "-A INPUT    -j ACCEPT -p tcp --dport 22   $CONNSTATE NEW" >> $FILEfilter
 
 echo "-A OUTPUT -p icmp -j ACCEPT" >> $FILEfilter
 echo "-A INPUT  -p icmp -j ACCEPT" >> $FILEfilter
