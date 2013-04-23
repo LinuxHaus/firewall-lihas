@@ -7,19 +7,34 @@ use XML::Application::Config;
 
 our $VERSION = '$Id$';
 
-sub DEBUG () { 1 }; # display more information
+use Log::Log4perl qw(:easy);
+$SIG{__WARN__} = sub {
+  local $Log::Log4perl::caller_depth =
+        $Log::Log4perl::caller_depth + 1;
+  WARN @_;
+};
+$SIG{__DIE__} = sub {
+  if($^S) {
+    # We're in an eval {} and don't want log
+    # this message but catch it later
+    return;
+  }
+  local $Log::Log4perl::caller_depth =
+        $Log::Log4perl::caller_depth + 1;
+  LOGDIE @_;
+};
 
 sub TIMER_DELAY { 10 };
 sub PING_TIMEOUT () { 5 }; # seconds between pings
 sub PING_COUNT () { 1 }; # ping repetitions
 
-my $cfg = new XML::Application::Config("LiHAS-Firewall","config.xml");
+my $cfg = new XML::Application::Config("LiHAS-Firewall","/etc/firewall.lihas.d/config.xml");
 my $testcount = $cfg->find('tests/@count');
 our @addresses;
 
 my $i;
 
-DEBUG and print "active: ".$cfg->find('tests/@active')."\n";
+DEBUG ("active: ".$cfg->find('tests/@active')."\n");
 if ($cfg->find('tests/@active')!=0) {
   for ($i=1; $i<=$testcount; $i++) {
     $addresses[$i-1] = $cfg->find('tests/test['.$i.']/@host');
@@ -55,7 +70,7 @@ sub ping_client_start {
 sub client_send_ping {
   my ($kernel, $session, $heap, $address) = @_[KERNEL, SESSION, HEAP, ARG0];
 
-  DEBUG and warn( $session->ID, ": pinging $address...\n" );
+  DEBUG $session->ID, ": pinging $address...\n";
 
   $heap->{requests}++;
   $heap->{ping_counts}->{$address}++;
@@ -78,7 +93,7 @@ sub client_got_pong {
   ) = @{$response_packet};
 
   if (defined $response_address) {
-    DEBUG and warn(
+    DEBUG (
       sprintf(
         "%d: ping to %-15.15s at %10d. " .
         "pong from %-15.15s in %6.3f s (ttl %3d)\n",
@@ -96,7 +111,7 @@ sub client_got_pong {
     );
   }
   else {
-    DEBUG and warn( $session->ID, ": time's up for $request_address...\n" );
+    DEBUG ( $session->ID, ": time's up for $request_address...\n" );
   }
 
   $kernel->yield(client_send_ping => $request_address) if (
@@ -108,7 +123,7 @@ sub client_got_pong {
 
 sub client_stop {
   my ($session, $heap) = @_[SESSION, HEAP];
-  DEBUG and warn( $session->ID, ": pinger client session stopped...\n" );
+  DEBUG ( $session->ID, ": pinger client session stopped...\n" );
 
   warn("REQUESTS: ".$heap->{requests}."\nDONES: ".$heap->{dones}."\nANSWERS: ".$heap->{answers});
 

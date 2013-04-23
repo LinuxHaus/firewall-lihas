@@ -4,7 +4,6 @@ use strict;
 use POE;
 use XML::Application::Config;
 
-sub DEBUG () { 1 }; # display more information
 sub TIMER_DELAY { 10 };
 sub PING_TIMEOUT () { 5 }; # seconds between pings
 sub PING_COUNT () { 1 }; # ping repetitions
@@ -72,6 +71,10 @@ sub dns_response {
         $sql = "INSERT INTO hostnames_current (hostname, time_first, time_valid_till, ip) VALUES (?, ?, ?, ?)";
 	$sth1 = $heap->{dbh}->prepare($sql);
 	$sth1->execute($response->{host}, time(), time()+$answer->ttl(), $answer->rdatastr());
+	$sql = "UPDATE vars_num SET value=? WHERE name=?";
+	$sth1 = $heap->{dbh}->prepare("$sql");
+        $sth1->execute(1,'fw_reload_dns');
+	$kernel->delay('firewall_reload_dns',10);
       } elsif ($count == 1) {
         if ($answer->rdatastr() !~ /^$ip$/) {
           $sql = "INSERT INTO dnshistory (hostname, time_first, time_valid_till, ip, active) VALUES (?, ?, ?, ?, ?)";
@@ -80,6 +83,10 @@ sub dns_response {
           $sql = "UPDATE hostnames_current SET time_valid_till=?, ip=? WHERE hostname=?";
 	  $sth1 = $heap->{dbh}->prepare($sql);
 	  $sth1->execute(time()+$answer->ttl(), $answer->rdatastr(), $response->{host});
+	  $sql = "UPDATE vars_num SET value=? WHERE name=?";
+	  $sth1 = $heap->{dbh}->prepare("$sql");
+          $sth1->execute(1,'fw_reload_dns');
+	  $kernel->delay('firewall_reload_dns',10);
         } else {
           $sql = "UPDATE hostnames_current SET time_valid_till=? WHERE hostname=? AND ip=?";
 	  $sth1 = $heap->{dbh}->prepare($sql);

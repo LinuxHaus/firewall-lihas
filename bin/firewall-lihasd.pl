@@ -23,25 +23,42 @@ firewall-lihasd
 Daemon supporting firewall-lihas.de by resolving dns-names
 
 =cut
+
+
 use warnings;
 use strict;
 
-use XML::Application::Config;
+use Log::Log4perl qw(:easy);
+$SIG{__WARN__} = sub {
+  local $Log::Log4perl::caller_depth =
+        $Log::Log4perl::caller_depth + 1;
+  WARN @_;
+};
+$SIG{__DIE__} = sub {
+  if($^S) {
+    # We're in an eval {} and don't want log
+    # this message but catch it later
+    return;
+  }
+  local $Log::Log4perl::caller_depth =
+        $Log::Log4perl::caller_depth + 1;
+  LOGDIE @_;
+};
 
+use Net::Server::Daemonize qw(daemonize);    # or any other daemonization module
+use XML::Application::Config;
 use POE qw(Component::Client::Ping Component::Client::DNS );
 # use Test::More skip_all => "Derzeit keine Tests";
-use lib "lib/";
+use lib "/etc/firewall.lihas.d/lib";
 use LiHAS::Firewall::Ping;
 use LiHAS::Firewall::DNS;
 use DBI;
 
-
 sub PING_TIMEOUT () { 5 }; # seconds between pings
 sub PING_COUNT () { 1 }; # ping repetitions
 sub TIMER_DELAY () { 10 }; # ping delay
-sub DEBUG () { 1 }; # display more information
 
-my $cfg = new XML::Application::Config("LiHAS-Firewall","config.xml");
+my $cfg = new XML::Application::Config("LiHAS-Firewall","/etc/firewall.lihas.d/config.xml");
 my $dbh = DBI->connect($cfg->find('database/dbd/@connectorstring'));
 
 my $i;
@@ -57,16 +74,22 @@ sub firewall_reload_dns {
   my @replacedns;
   my ($hostname, $ip, $table);
   my ($fh, $line, $iptupdate, $iptflush, $flushline);
-  my $sql = "SELECT hostname, ip FROM hostnames_current";
+
+  my $sql = "UPDATE vars_num SET value=? WHERE name=?";
   my $sth = $heap->{dbh}->prepare("$sql");
+  $sth->execute(0,'fw_reload_dns');
+
+  $sql = "SELECT hostname, ip FROM hostnames_current";
+  $sth = $heap->{dbh}->prepare("$sql");
   $sth->execute();
   $sth->bind_columns(\$hostname, \$ip);
   while ($sth->fetch()) {
     push(@replacedns,[ "dns-$hostname", "$ip" ] );
   }
   push(@replacedns,[ "^-A ", "-A dns-" ] );
+
   if ( -e $heap->{datapath}."/ipt_update" ) {
-    unlink $heap->{datapath}."/ipt_update";
+    unlink $heap->{datapath}."/ipt_update" or warn "Could not unlink ".$heap->{datapath}."/ipt_update: $!";
   }
   open($iptupdate, ">", $heap->{datapath}."/ipt_update") or die "cannot open < ".$heap->{datapath}."/ipt_update: $!";
   opendir(my $dh, $heap->{datapath}) || die "can't opendir ".$heap->{datapath}.": $!\n";
@@ -78,7 +101,6 @@ sub firewall_reload_dns {
     open($iptflush, "iptables-save -t $table |") or die "cannot open iptables-save -t $table |: $!";
     foreach $flushline (<$iptflush>) {
       if ($flushline =~ m/^:dns-([^ ]*) /) {
-        print "iptables -t $table -F $1\n";
         print $iptupdate "iptables -t $table -F $1\n";
       }
     }
@@ -159,7 +181,7 @@ sub firewall_create_db {
 
 sub session_default {
   my ($event, $args) = @_[ARG0, ARG1];
-  print( "Session ", $_[SESSION]->ID, " caught unhandled event $event with (@$args).\n");
+  ERROR( "Session ", $_[SESSION]->ID, " caught unhandled event $event with (@$args).\n");
 }
 
 sub session_start {
@@ -187,7 +209,7 @@ sub session_start {
 
 sub session_stop {
   my ($kernel, $heap) = @_[KERNEL, HEAP];
-  DEBUG && print "session_stop\n";
+  DEBUG "session_stop\n";
   $heap->{dbh}->disconnect;
   return 0;
 }
@@ -209,7 +231,9 @@ POE::Session->create(
   }
 );
 
-DEBUG && print "kernel-run\n";
+DEBUG "daemonize\n";
+#daemonize(root => root => '/var/state/firewall-lihasd.pid');
+DEBUG "kernel-run\n";
 POE::Kernel->run();
 
 exit 0;
