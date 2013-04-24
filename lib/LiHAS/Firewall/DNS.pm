@@ -3,6 +3,7 @@ use warnings;
 use strict;
 use POE;
 use XML::Application::Config;
+use Log::Log4perl qw(:easy);
 
 sub TIMER_DELAY { 10 };
 sub PING_TIMEOUT () { 5 }; # seconds between pings

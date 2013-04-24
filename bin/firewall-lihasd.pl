@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 # Copyright (C) 2011-2013 Adrian Reyer support@lihas.de
 #
 # This program is free software: you can redistribute it and/or modify
@@ -15,7 +15,16 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-# Requirements: libxml-application-config-perl
+# Requirements: libxml-application-config-perl liblog-log4perl liblog-dispatch-perl
+
+BEGIN {
+  use Net::Server::Daemonize qw(daemonize check_pid_file unlink_pid_file);    # or any other daemonization module
+  daemonize(root => root => '/var/state/firewall-lihasd.pid');
+}
+
+use Log::Log4perl qw(:easy);
+Log::Log4perl::init('/etc/firewall.lihas.d/log4perl.conf');
+if (! Log::Log4perl::initialized()) { WARN "uninit"; } else { WARN "init"; }
 
 =head1 NAME
 
@@ -24,28 +33,15 @@ Daemon supporting firewall-lihas.de by resolving dns-names
 
 =cut
 
-
 use warnings;
 use strict;
 
-use Log::Log4perl qw(:easy);
 $SIG{__WARN__} = sub {
   local $Log::Log4perl::caller_depth =
         $Log::Log4perl::caller_depth + 1;
   WARN @_;
 };
-$SIG{__DIE__} = sub {
-  if($^S) {
-    # We're in an eval {} and don't want log
-    # this message but catch it later
-    return;
-  }
-  local $Log::Log4perl::caller_depth =
-        $Log::Log4perl::caller_depth + 1;
-  LOGDIE @_;
-};
 
-use Net::Server::Daemonize qw(daemonize);    # or any other daemonization module
 use XML::Application::Config;
 use POE qw(Component::Client::Ping Component::Client::DNS );
 # use Test::More skip_all => "Derzeit keine Tests";
@@ -54,14 +50,7 @@ use LiHAS::Firewall::Ping;
 use LiHAS::Firewall::DNS;
 use DBI;
 
-sub PING_TIMEOUT () { 5 }; # seconds between pings
-sub PING_COUNT () { 1 }; # ping repetitions
-sub TIMER_DELAY () { 10 }; # ping delay
-
 my $cfg = new XML::Application::Config("LiHAS-Firewall","/etc/firewall.lihas.d/config.xml");
-my $dbh = DBI->connect($cfg->find('database/dbd/@connectorstring'));
-
-my $i;
 
 =head1 Functions
 
@@ -71,9 +60,12 @@ Reloads the iptables dns-* chains with current IPs from database
 =cut
 sub firewall_reload_dns {
   my ($kernel, $session, $heap) = @_[KERNEL, SESSION, HEAP];
+  if (! Log::Log4perl::initialized()) { DEBUG "firewall_reload_dns: uninit"; } else { DEBUG "firewall_reload_dns: init"; }
   my @replacedns;
   my ($hostname, $ip, $table);
-  my ($fh, $line, $iptupdate, $iptflush, $flushline);
+  my ($dh, $fh, $line, $iptupdate, $iptflush, $flushline);
+  my $logger = Log::Log4perl->get_logger('firewalld.reload.dns');
+  if (! Log::Log4perl::initialized()) { $logger->warn("uninit"); }
 
   my $sql = "UPDATE vars_num SET value=? WHERE name=?";
   my $sth = $heap->{dbh}->prepare("$sql");
@@ -89,23 +81,23 @@ sub firewall_reload_dns {
   push(@replacedns,[ "^-A ", "-A dns-" ] );
 
   if ( -e $heap->{datapath}."/ipt_update" ) {
-    unlink $heap->{datapath}."/ipt_update" or warn "Could not unlink ".$heap->{datapath}."/ipt_update: $!";
+    unlink $heap->{datapath}."/ipt_update" or $logger->warn("Could not unlink ".$heap->{datapath}."/ipt_update: $!");
   }
-  open($iptupdate, ">", $heap->{datapath}."/ipt_update") or die "cannot open < ".$heap->{datapath}."/ipt_update: $!";
-  opendir(my $dh, $heap->{datapath}) || die "can't opendir ".$heap->{datapath}.": $!\n";
+  if ( ! open($iptupdate, ">", $heap->{datapath}."/ipt_update")) { $logger->fatal("cannot open < ".$heap->{datapath}."/ipt_update: $!"); exit 1;};
+  if ( ! opendir($dh, $heap->{datapath}) ) { $logger->fatal("can't opendir ".$heap->{datapath}.": $!\n"); exit 1; };
   my @files = grep { /^dns-/ && -f $heap->{datapath}."/$_" } readdir($dh);
   closedir $dh;
   foreach my $file (@files) {
     $table = $file;
     $table =~ s/^dns-//;
-    open($iptflush, "iptables-save -t $table |") or die "cannot open iptables-save -t $table |: $!";
+    if (! open($iptflush, "iptables-save -t $table |")) { $logger->fatal("cannot open iptables-save -t $table |: $!"); exit 1};
     foreach $flushline (<$iptflush>) {
       if ($flushline =~ m/^:dns-([^ ]*) /) {
         print $iptupdate "iptables -t $table -F $1\n";
       }
     }
     close($iptflush);
-    open($fh, "<", $heap->{datapath}."/$file") or die "cannot open < ".$heap->{datapath}."/$file: $!";
+    if ( ! open($fh, "<", $heap->{datapath}."/$file")) { $logger->fatal("cannot open < ".$heap->{datapath}."/$file: $!"); exit 1};
     foreach $line (<$fh>) {
       foreach my $replace (@replacedns) {
         $line =~ s/$replace->[0]/$replace->[1]/g;
@@ -129,6 +121,7 @@ checks the firewall config groups/hostname-* for dns-names and adds syncs them w
 =cut
 sub firewall_find_dnsnames {
   my ($kernel, $session, $heap) = @_[KERNEL, SESSION, HEAP];
+  if (! Log::Log4perl::initialized()) { DEBUG "firewall_find_dnsnames: uninit"; } else { DEBUG "firewall_find_dnsnames: init"; }
   my $line;
   my $fh;
   my $hostname;
@@ -170,6 +163,7 @@ Setup the db according to the config.xml
 =cut
 sub firewall_create_db {
   my ($kernel, $heap) = @_[KERNEL, HEAP];
+  if (! Log::Log4perl::initialized()) { DEBUG "firewall_create_db: uninit"; } else { DEBUG "firewall_create_db: init"; }
   foreach my $sql (split(/;/,$cfg->find('database/create'))) {
     if ( defined $sql ) {
       chomp $sql;
@@ -181,12 +175,14 @@ sub firewall_create_db {
 
 sub session_default {
   my ($event, $args) = @_[ARG0, ARG1];
+  if (! Log::Log4perl::initialized()) { DEBUG "session_default: uninit"; } else { DEBUG "session_default: init"; }
   ERROR( "Session ", $_[SESSION]->ID, " caught unhandled event $event with (@$args).\n");
 }
 
 sub session_start {
   my ($kernel, $heap) = @_[KERNEL, HEAP];
-  $heap->{dbh} = $dbh;
+  if (! Log::Log4perl::initialized()) { DEBUG "session_start: uninit"; } else { DEBUG "session_start: init"; }
+  $heap->{dbh} = DBI->connect($cfg->find('database/dbd/@connectorstring'));
   $heap->{datapath} = $cfg->find('config/@db_dbd');
 
   # fw dns-rules need a reload for initially
@@ -231,8 +227,6 @@ POE::Session->create(
   }
 );
 
-DEBUG "daemonize\n";
-#daemonize(root => root => '/var/state/firewall-lihasd.pid');
 DEBUG "kernel-run\n";
 POE::Kernel->run();
 

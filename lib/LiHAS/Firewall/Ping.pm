@@ -1,5 +1,6 @@
 package LiHAS::Firewall::Ping;
 
+use Log::Log4perl qw(:easy);
 use warnings;
 use strict;
 use POE;
