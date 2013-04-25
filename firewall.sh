@@ -24,7 +24,7 @@ NAME=firewall
 DAEMON=/bin/true
 SCRIPTNAME=/etc/init.d/$NAME
 CONFIGDIR=/etc/firewall.lihas.d
-LIBDIR=lib
+LIBDIR=/usr/lib/firewall-lihas
 TMPDIR=${TMPDIR:-/tmp}
 
 DATAPATH=/var/lib/firewall-lihas
@@ -611,10 +611,12 @@ case "$1" in
         do_start
         iptables-restore < $FILE
 	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
+	firewall-lihasd.pl
         ;;
   stop)
         [ "$VERBOSE" != no ] && log_daemon_msg "Stopping $DESC" "$NAME"
         do_stop
+	kill -INT $(cat /var/state/firewall-lihasd.pid )
         ;;
   reload|force-reload)
         #
@@ -625,6 +627,9 @@ case "$1" in
         do_start
         iptables-restore < $FILE
 	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
+	kill -INT $(cat /var/state/firewall-lihasd.pid )
+	sleep 1
+	firewall-lihasd.pl
         ;;
   restart|force-reload)
         #
@@ -644,6 +649,9 @@ case "$1" in
                 # Failed to stop
                 ;;
         esac
+	kill -INT $(cat /var/state/firewall-lihasd.pid )
+	sleep 1
+	firewall-lihasd.pl
         ;;
   *)
         #echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
