@@ -15,12 +15,24 @@ section=admin
 author="Adrian Reyer" #programmer/s of the souce-code
 website="http://www.lihas.de/"
 ARCH=noarch
-depends="coreutils"  # bash (>= 2.0a ) # needs to be filled to be a good deb-package
+depends="bash sed"  # bash (>= 2.0a ) # needs to be filled to be a good deb-package
+recommends="liblog-log4perl-perl,libpoe-component-client-dns-perl,libpoe-component-client-ping-perl,libpoe-perl,libdbi-perl,libdbd-sqlite3-perl,libnet-server-perl"
 conffiles="/etc/firewall.lihas.d/localhost,/etc/firewall.lihas.d/include/dnat,/etc/firewall.lihas.d/groups/hostgroup-testhosts1,/etc/firewall.lihas.d/groups/portgroup-dns,/etc/firewall.lihas.d/groups/hostgroup-testhosts,/etc/firewall.lihas.d/policy-routing-dsl/comment,/etc/firewall.lihas.d/policy-routing-dsl/key,/etc/firewall.lihas.d/policy-routing-dsl/gateway"
 #suggests=
 #recommends=
 copyright=GPL
 cat << EOF > $changelog
+$NAME (1.50-2)
+
+* firwall-lihasd.pl: added, needs some perl libraries to run
+* firwall-lihasd.pl: does DNS
+* firwall-lihasd.pl: daemonizes
+* file locations changed for lib/*
+* detects LOG/ULOG
+* detects state/conntrack module
+
+-- Adrian Reyer <lihas@lihas.de> 2013-04-25
+
 $NAME (1.37-2)
 
 * Build-Script an Pfadaenderungen angepasst.
