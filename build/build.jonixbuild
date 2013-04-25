@@ -24,12 +24,14 @@ copyright=GPL
 cat << EOF > $changelog
 $NAME (1.50-2)
 
+* reads /etc/default/firewall
 * firwall-lihasd.pl: added, needs some perl libraries to run
-* firwall-lihasd.pl: does DNS
+* firwall-lihasd.pl: does DNS resolving
 * firwall-lihasd.pl: daemonizes
 * file locations changed for lib/*
 * detects LOG/ULOG
 * detects state/conntrack module
+* can use dns in hostgroups where ips would be expected, rules are updated by firewall-lihasd.pl, firewall-lihasd.pl has to run even for initialization
 
 -- Adrian Reyer <lihas@lihas.de> 2013-04-25
 
@@ -47,25 +49,31 @@ $NAME (1.37-1)
 EOF
 
 build () {
-		
-		mkdir -p $PKG/etc/firewall.lihas.d
-		cp -a lib $PKG/etc/firewall.lihas.d
-		$FAKEROOT chmod 0755 $PKG/etc/firewall.lihas.d/lib/*.sh
-		cp -a README $PKG/etc/firewall.lihas.d
-		cp -a include $PKG/etc/firewall.lihas.d
-		cp -a groups $PKG/etc/firewall.lihas.d
-		$FAKEROOT install -m 0755 localhost $PKG/etc/firewall.lihas.d/
-		$FAKEROOT install -m 0755 firewall.sh $PKG/etc/firewall.lihas.d/
-		cp -a iptables-accept $PKG/etc/firewall.lihas.d
-		cp -a policy-routing-dsl $PKG/etc/firewall.lihas.d
-		cp -a interface-eth0 $PKG/$docpath/interface-eth99
-		$FAKEROOT chown -R root:root  $PKG
 
-		cp README $PKG/$docpath/
-		cp CHANGELOG $PKG/$docpath/
+	mkdir -p $PKG/etc/firewall.lihas.d
+	mkdir -p $PKG/usr/lib/firewall-lihas
+	mkdir -p $PKG/usr/share/perl5
+	mkdir -p $PKG/$docpath/examples
 
-		#echo "ln -sf /etc/firewall.lihas.d/firewall.sh $initpath/firewall-lihas" > $postinstall
-		cd $PKG/etc/init.d/
-		ln -sf /etc/firewall.lihas.d/firewall.sh firewall-lihas
+	cp -a confix.xml $PKG/etc/firewall.lihas.d
+	cp -a log4perl.conf $PKG/etc/firewall.lihas.d
+	cp -a include $PKG/etc/firewall.lihas.d
+	cp -a groups $PKG/etc/firewall.lihas.d
+	cp -a lib/*.sh $PKG/usr/lib/firewall-lihas/
+	cp -a lib/LiHAS $PKG/usr/share/perl5/
+	$FAKEROOT chmod 0755 $PKG/usr/lib/firewall-lihas/*.sh
+	cp -a README $PKG/$docpath/
+	cp CHANGELOG $PKG/$docpath/
+	$FAKEROOT install -m 0755 localhost $PKG/etc/firewall.lihas.d/
+	$FAKEROOT install -m 0755 firewall.sh $PKG/etc/firewall.lihas.d/
+	cp -a iptables-accept $PKG/etc/firewall.lihas.d
+	cp -a policy-routing-dsl $PKG/$docpath/examples/policy-routing-dsl
+	cp -a interface-eth0 $PKG/$docpath/examples/interface-eth99
 
-	}
+	$FAKEROOT chown -R root:root  $PKG
+
+	#echo "ln -sf /etc/firewall.lihas.d/firewall.sh $initpath/firewall-lihas" > $postinstall
+	cd $PKG/etc/init.d/
+	ln -sf /etc/firewall.lihas.d/firewall.sh firewall-lihas
+
+}

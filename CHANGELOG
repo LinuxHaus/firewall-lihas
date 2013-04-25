@@ -1,3 +1,13 @@
+Do 25. Apr 10:55:49 CEST 2013, are
+- reads /etc/default/firewall
+- firwall-lihasd.pl: added, needs some perl libraries to run
+- firwall-lihasd.pl: does DNS resolving
+- firwall-lihasd.pl: daemonizes
+- file locations changed for lib/*
+- detects LOG/ULOG
+- detects state/conntrack module
+- can use dns in hostgroups where ips would be expected, rules are updated by firewall-lihasd.pl, firewall-lihasd.pl has to run even for initialization
+
 Do 18. Apr 16:02:35 CEST 2013, are
 - firewall-lihasd Basisfunktionalitaet
 - /etc/default/firewall fuer Variablen
@@ -8,10 +18,6 @@ Di 12. Apr 14:43:40 CEST 2011, are
 
 Sa 26. Feb 18:43:41 CET 2011, are
 - interface-*/nolog kann nun die Syntax von privclients, einschliesslich includes
-
-Do 25. Nov 10:37:11 CET 2010, are
-- DNS-Support auch fuer dynamische DNS-Adressen
-- neue Abhaengigkeiten: dnsutils, sqlite3
 
 Mi 18. Aug 18:07:48 CEST 2010, are
 - interface-lo/* ist nun fuer vom Firewall abgehende Verbindungen gueltig
