@@ -15,13 +15,19 @@ section=admin
 author="Adrian Reyer" #programmer/s of the souce-code
 website="http://www.lihas.de/"
 ARCH=noarch
-depends="bash sed"  # bash (>= 2.0a ) # needs to be filled to be a good deb-package
+depends="bash,sed"  # bash (>= 2.0a ) # needs to be filled to be a good deb-package
 recommends="liblog-log4perl-perl,libpoe-component-client-dns-perl,libpoe-component-client-ping-perl,libpoe-perl,libdbi-perl,libdbd-sqlite3-perl,libnet-server-perl"
-conffiles="/etc/firewall.lihas.d/localhost,/etc/firewall.lihas.d/include/dnat,/etc/firewall.lihas.d/groups/hostgroup-testhosts1,/etc/firewall.lihas.d/groups/portgroup-dns,/etc/firewall.lihas.d/groups/hostgroup-testhosts,/etc/firewall.lihas.d/policy-routing-dsl/comment,/etc/firewall.lihas.d/policy-routing-dsl/key,/etc/firewall.lihas.d/policy-routing-dsl/gateway"
+conffiles="/etc/firewall.lihas.d/localhost,/etc/firewall.lihas.d/include/dnat,/etc/firewall.lihas.d/groups/hostgroup-testhosts1,/etc/firewall.lihas.d/groups/portgroup-dns,/etc/firewall.lihas.d/groups/hostgroup-testhosts"
 #suggests=
 #recommends=
 copyright=GPL
 cat << EOF > $changelog
+$NAME (1.50-3)
+
+* add missing files
+
+-- Adrian Reyer <lihas@lihas.de> 2013-05-03
+
 $NAME (1.50-2)
 
 * reads /etc/default/firewall
@@ -53,12 +59,15 @@ build () {
 	mkdir -p $PKG/etc/firewall.lihas.d
 	mkdir -p $PKG/usr/lib/firewall-lihas
 	mkdir -p $PKG/usr/share/perl5
+	mkdir -p $PKG/usr/sbin
 	mkdir -p $PKG/$docpath/examples
 
-	cp -a confix.xml $PKG/etc/firewall.lihas.d
+	cp -a config.xml $PKG/etc/firewall.lihas.d
 	cp -a log4perl.conf $PKG/etc/firewall.lihas.d
 	cp -a include $PKG/etc/firewall.lihas.d
 	cp -a groups $PKG/etc/firewall.lihas.d
+	cp -a bin/firewall-lihasd.pl $PKG/usr/sbin/
+	$FAKEROOT chmod 0755 $PKG/usr/lib/firewall-lihas/firewall-lihasd.pl
 	cp -a lib/*.sh $PKG/usr/lib/firewall-lihas/
 	cp -a lib/LiHAS $PKG/usr/share/perl5/
 	$FAKEROOT chmod 0755 $PKG/usr/lib/firewall-lihas/*.sh
