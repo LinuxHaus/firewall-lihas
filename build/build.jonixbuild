@@ -16,12 +16,18 @@ author="Adrian Reyer" #programmer/s of the souce-code
 website="http://www.lihas.de/"
 ARCH=noarch
 depends="bash,sed"  # bash (>= 2.0a ) # needs to be filled to be a good deb-package
-recommends="liblog-log4perl-perl,libpoe-component-client-dns-perl,libpoe-component-client-ping-perl,libpoe-perl,libdbi-perl,libdbd-sqlite3-perl,libnet-server-perl"
+recommends="liblog-log4perl-perl,libpoe-component-client-dns-perl,libpoe-component-client-ping-perl,libpoe-perl,libdbi-perl,libdbd-sqlite3-perl,libnet-server-perl,libxml-application-config-perl,libxml-xpath-perl,xmlstarlet"
 conffiles="/etc/firewall.lihas.d/localhost,/etc/firewall.lihas.d/include/dnat,/etc/firewall.lihas.d/groups/hostgroup-testhosts1,/etc/firewall.lihas.d/groups/portgroup-dns,/etc/firewall.lihas.d/groups/hostgroup-testhosts"
 #suggests=
 #recommends=
 copyright=GPL
 cat << EOF > $changelog
+$NAME (1.51-1)
+
+* Fixed restart
+
+-- Adrian Reyer <lihas@lihas.de> 2013-06-19
+
 $NAME (1.50-3)
 
 * add missing files

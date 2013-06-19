@@ -19,7 +19,7 @@
 
 BEGIN {
   use Net::Server::Daemonize qw(daemonize check_pid_file unlink_pid_file);    # or any other daemonization module
-  daemonize(root => root => '/var/state/firewall-lihasd.pid');
+  daemonize(root => root => '/var/run/firewall-lihasd.pid');
 }
 
 use Log::Log4perl qw(:easy);
@@ -185,6 +185,7 @@ sub session_start {
   $heap->{dbh} = DBI->connect($cfg->find('database/dbd/@connectorstring'));
   $heap->{datapath} = $cfg->find('config/@db_dbd');
 
+  firewall_create_db(@_);
   # fw dns-rules need a reload for initially
   my $sql = "DELETE FROM vars_num WHERE name=?";
   my $sth = $heap->{dbh}->prepare($sql);
@@ -195,7 +196,6 @@ sub session_start {
 
   $heap->{refresh_dns_config} = $cfg->find('dns/@refresh_dns_config');
   $heap->{refresh_dns_minimum} = $cfg->find('dns/@refresh_dns_minimum');
-  firewall_create_db(@_);
   $kernel->yield('timer_ping');
   $kernel->yield('firewall_find_dnsnames');
   $kernel->yield('dns_update');
