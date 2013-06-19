@@ -637,18 +637,9 @@ case "$1" in
         # 'force-reload' alias
         #
         log_daemon_msg "Restarting $DESC" "$NAME"
-        do_stop
-        case "$?" in
-          0|1)
-                do_start
-                iptables-restore < $FILE
-	        [ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
-		exit 0
-                ;;
-          *)
-                # Failed to stop
-                ;;
-        esac
+        do_start
+        iptables-restore < $FILE
+	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
 	kill -INT $(cat /var/state/firewall-lihasd.pid )
 	sleep 1
 	firewall-lihasd.pl
