@@ -1,4 +1,4 @@
-$Id$
+$Id: tech-dyndns.txt,v 1.2 2010/11/24 22:02:35 are Exp $
 
 DNS als Hostnamen:
 Ab und an ist es sinnvoll, DNS-Hostnamen als Quelle fuer IP-Adressen zu
