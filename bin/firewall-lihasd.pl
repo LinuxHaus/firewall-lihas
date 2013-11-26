@@ -92,7 +92,7 @@ sub firewall_reload_dns {
     $table =~ s/^dns-//;
     if (! open($iptflush, "iptables-save -t $table |")) { $logger->fatal("cannot open iptables-save -t $table |: $!"); exit 1};
     foreach $flushline (<$iptflush>) {
-      if ($flushline =~ m/^:dns-([^ ]*) /) {
+      if ($flushline =~ m/^(:dns-[^ ]*) /) {
         print $iptupdate "iptables -t $table -F $1\n";
       }
     }
