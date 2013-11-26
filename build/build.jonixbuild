@@ -21,6 +21,12 @@ conffiles="/etc/firewall.lihas.d/localhost,/etc/firewall.lihas.d/include/dnat,/e
 #suggests=
 copyright=GPL
 cat << EOF > $changelog
+$NAME (1.52-1)
+
+* Fixed startup with daemon
+
+-- Adrian Reyer <lihas@lihas.de> 2013-11-26
+
 $NAME (1.51-1)
 
 * Fixed restart

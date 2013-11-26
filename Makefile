@@ -1,5 +1,5 @@
-export BUILD=2
-export VERSION=1.51
+export BUILD=1
+export VERSION=1.52
 
 package:
 	jonixbuild build
