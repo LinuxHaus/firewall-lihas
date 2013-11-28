@@ -3,6 +3,7 @@ NAME="firewall-lihas"
 #VERSION=${VERSION:-VERSION}
 #export VERSION=$(grep firewall.sh ../firewall.sh  | cut -d' ' -f4)
 #export VERSION=$(grep firewall.sh ../firewall.sh  | cut -d' ' -f4)
+VERSION=$(git describe)
 echo version $VERSION
 #BUILD=2
 export packagershortcut=lihas
