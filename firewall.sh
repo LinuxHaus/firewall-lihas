@@ -485,7 +485,7 @@ for policy in policy-routing-*; do
         else
           echo Non PPP/NET-Policy-Routing is not implemented
         fi
-        while ip rule | egrep -qw 'fwmark .* lookup '$policy; do
+        while ip rule | egrep -qw "fwmark $key lookup $policy"; do
           ip rule del fwmark $key table $policy
         done
         ip rule add fwmark $key table $policy
