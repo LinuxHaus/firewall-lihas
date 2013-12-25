@@ -52,6 +52,9 @@
     groups/portgroup-GROUPNAME
     definiert werden, hostgroup-GROUPNAME bzw. portgroup-GROUPNAME steht dann anstelle
     des POrts/Hosts/Netzwerks
+  - interface-NAME/mark
+    Ein Keyword pro Zeile, derzeit bekannt:
+      dhcpd - Aktiviert Regeln, dass der Firewall DHCP-Anfragen auf dem Interface beantworten kann
 
 
 - 1 Verzeichnis pro Routingtabelle nach dem Muster

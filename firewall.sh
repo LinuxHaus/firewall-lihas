@@ -29,16 +29,20 @@ TMPDIR=${TMPDIR:-/tmp}
 
 DATAPATH=/var/lib/firewall-lihas
 DATABASE=$DATAPATH/db.sqlite
+LOGSTARTUP=$TMPDIR/firewall-lihas-startup.log
 
 # Default values
 # TARGETLOG: LOG-Chain, mostly useful: LOG ULOG
 TARGETLOG=LOG
 
-# Exit if the package is not installed
-[ -x "$DAEMON" ] || exit 0
-
 # Read configuration variable file if it is present
 [ -r /etc/default/$NAME ] && . /etc/default/$NAME
+
+# Reset startup logfile
+echo -n > $LOGSTARTUP
+
+# Exit if the package is not installed
+[ -x "$DAEMON" ] || exit 0
 
 FILE=$TMPDIR/iptables
 FILEfilter=$TMPDIR/iptables-filter
@@ -463,6 +467,9 @@ echo "-I PREROUTING -j MARK --set-mark 0" >> $FILEmangle
 echo "-I OUTPUT -j MARK --set-mark 0" >> $FILEmangle
 for policy in policy-routing-*; do
   policy=${policy#policy-routing-}
+  if ! ip route ls table $policy >/dev/null 2>&1; then
+    echo "Please add '$policy' to /etc/iproute2/rt_tables or policy routing won't work. If you don't want policy routing, feel free to delete $CONFIGDIR/policy-routing-$policy" | tee -a $LOGSTARTUP
+  fi
   if [ -e policy-routing-$policy/key ]; then
     [ -e policy-routing-$policy/comment ] && cat policy-routing-$policy/comment | sed 's/^/ /'
     key=$(cat policy-routing-$policy/key)
@@ -571,6 +578,20 @@ for iface in interface-*; do
   fi
 done
 
+lihas_ipt_mark_dhcpd () {
+  outfile=$1
+  iface=$2
+  echo "-A INPUT -i $iface -p udp --sport 68 --dport 67 -j ACCEPT" >> $outfile
+  echo "-A OUTPUT -o $iface -p udp --sport 67 --dport 68 -j ACCEPT" >> $outfile
+}
+for iface in interface-*; do
+  iface=${iface#interface-}
+  if [ -e interface-$iface/mark ]; then
+    [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
+    grep -qwi dhcpd interface-$iface/mark && lihas_ipt_mark_dhcpd "$FILEfilter" "$iface"
+  fi
+done
+
 for chain in INPUT OUTPUT FORWARD; do
   echo "-A $chain -j $TARGETLOG" >> $FILEfilter
 done
@@ -612,6 +633,12 @@ case "$1" in
         iptables-restore < $FILE
 	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
 	firewall-lihasd.pl
+	if [ -s "$LOGSTARTUP" ]; then
+	  echo
+	  echo "********************************************************************************"
+	  echo "Potential showstoppers:"
+	  cat $LOGSTARTUP
+        fi
         ;;
   stop)
         [ "$VERBOSE" != no ] && log_daemon_msg "Stopping $DESC" "$NAME"
