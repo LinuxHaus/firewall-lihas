@@ -86,3 +86,7 @@
 
 Berechtigungen und DNAT werden an dem Interface konfiguriert, an dem der Client haengt.
 SNAT und Masquerading werden am ausgehenden Interface konfiguriert.
+
+Externe Programme:
+firewall-lihasd.pl - DNS in der Firewallkonfiguration mitsamt Updates
+firewall-lihas-watchdog-cron.sh - prueft ob die alternative Routingtabellen aktuell sind und startete ggf. die Firewall neu
