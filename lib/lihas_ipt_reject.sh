@@ -18,25 +18,25 @@ lihas_ipt_rejectclients () {
   else
     if [ $dport == "0" ]; then
       if [ "ga$oiface" == "ga" ]; then
-        echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -j REJECT" >&5
-        echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto -j REJECT" >&5
+        IPT_FILTER "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -j REJECT"
+        IPT_FILTER "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto -j REJECT"
       else
-        echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -o $oiface -j REJECT" >&5
+        IPT_FILTER "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto -o $oiface -j REJECT"
       fi
     else
       if [ "ga$oiface" == "ga" ]; then
         if [ $proto == "icmp" ]; then
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j REJECT" >&5
-          echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j REJECT" >&5
+          IPT_FILTER "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j REJECT"
+          IPT_FILTER "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -j REJECT"
         else 
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j REJECT" >&5
-          echo "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j REJECT" >&5
+          IPT_FILTER "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j REJECT"
+          IPT_FILTER "-A in-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -j REJECT"
         fi
       else
         if [ $proto == "icmp" ]; then
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -o $oiface -j REJECT" >&5
+          IPT_FILTER "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --icmp-type $dport -o $oiface -j REJECT"
         else 
-          echo "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -o $oiface -j REJECT" >&5
+          IPT_FILTER "-A fwd-$iface -m state --state new -s $snet -d $dnet -p $proto --dport $dport -o $oiface -j REJECT"
         fi
       fi
     fi

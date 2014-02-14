@@ -137,34 +137,35 @@ export TARGETLOG HAVE_COMMENT HAVE_LOG HAVE_ULOG HAVE_IPSET
 . $LIBDIR/helper-group.sh
 . $LIBDIR/lihas_ipt_reject.sh
 . $LIBDIR/ipset-setup.sh
+. $LIBDIR/iptables-wrapper.sh
 
 echo "Allowing all established Connections"
 for chain in INPUT OUTPUT FORWARD; do
-  echo ":$chain DROP" >&5
+  IPT_FILTER ":$chain DROP"
 done
 for chain in INPUT OUTPUT FORWARD; do
-  echo "-A $chain $CONNSTATE ESTABLISHED,RELATED -j ACCEPT" >&5
+  IPT_FILTER "-A $chain $CONNSTATE ESTABLISHED,RELATED -j ACCEPT"
 done
 for chain in PREROUTING POSTROUTING OUTPUT; do
-  echo ":$chain ACCEPT" >&6
+  IPT_NAT ":$chain ACCEPT"
 done
 for chain in PREROUTING INPUT FORWARD OUTPUT POSTROUTING; do
-  echo ":$chain ACCEPT" >&7
+  IPT_MANGLE ":$chain ACCEPT"
 done
 
 for iface in interface-*; do
   iface=${iface#interface-}
-  echo ":in-$iface -" >&5
-  echo ":out-$iface -" >&5
-  echo ":fwd-$iface -" >&5
-  echo ":dns-in-$iface -" >&5
-  echo ":dns-out-$iface -" >&5
-  echo ":dns-fwd-$iface -" >&5
+  IPT_FILTER ":in-$iface -"
+  IPT_FILTER ":out-$iface -"
+  IPT_FILTER ":fwd-$iface -"
+  IPT_FILTER ":dns-in-$iface -"
+  IPT_FILTER ":dns-out-$iface -"
+  IPT_FILTER ":dns-fwd-$iface -"
 
-  echo ":pre-$iface -" >&6
-  echo ":post-$iface -" >&6
-  echo ":dns-pre-$iface -" >&6
-  echo ":dns-post-$iface -" >&6
+  IPT_NAT ":pre-$iface -"
+  IPT_NAT ":post-$iface -"
+  IPT_NAT ":dns-pre-$iface -"
+  IPT_NAT ":dns-post-$iface -"
 done
 
 echo "Setting up IPSEC Spoof Protection"
@@ -174,53 +175,53 @@ for iface in interface-*; do
     [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
     cat interface-$iface/network-ipsec | sed '/^[ \t]*$/d; /^#/d' |
     while read network; do
-      echo "-A PREROUTING -p esp -j MARK --set-mark 8000/0000" >&7
-      echo "-A PREROUTING -p ah -j MARK --set-mark 8000/0000" >&7
-      echo "-A in-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG" >&5
-      echo "-A fwd-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG" >&5
-      echo "-A in-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j DROP" >&5
-      echo "-A fwd-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j DROP" >&5
+      IPT_MANGLE "-A PREROUTING -p esp -j MARK --set-mark 8000/0000"
+      IPT_MANGLE "-A PREROUTING -p ah -j MARK --set-mark 8000/0000"
+      IPT_FILTER "-A in-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG"
+      IPT_FILTER "-A fwd-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG"
+      IPT_FILTER "-A in-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j DROP"
+      IPT_FILTER "-A fwd-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j DROP"
     done
   fi
-  echo "-A PREROUTING -i $iface -j pre-$iface" >&6
-  echo "-A POSTROUTING -o $iface -j post-$iface" >&6
+  IPT_NAT "-A PREROUTING -i $iface -j pre-$iface"
+  IPT_NAT "-A POSTROUTING -o $iface -j post-$iface"
 done
 
 echo "Setting up Chains"
 for iface in interface-*; do
   iface=${iface#interface-}
   if [ ${iface} == "lo" ]; then
-    echo "-A OUTPUT -j in-$iface" >&5
-    echo "-A OUTPUT -j pre-$iface" >&6
-    echo "-A POSTROUTING -o $iface -j post-$iface" >&6
-    echo "-A OUTPUT -j dns-in-$iface" >&5
-    echo "-A OUTPUT -j dns-pre-$iface" >&6
-    echo "-A POSTROUTING -o $iface -j dns-post-$iface" >&6
+    IPT_FILTER "-A OUTPUT -j in-$iface"
+    IPT_NAT "-A OUTPUT -j pre-$iface"
+    IPT_NAT "-A POSTROUTING -o $iface -j post-$iface"
+    IPT_FILTER "-A OUTPUT -j dns-in-$iface"
+    IPT_NAT "-A OUTPUT -j dns-pre-$iface"
+    IPT_NAT "-A POSTROUTING -o $iface -j dns-post-$iface"
   else
     [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
     if [ -e interface-$iface/network ]; then
       cat interface-$iface/network | sed '/^[ \t]*$/d; /^#/d' |
       while read network; do
-        echo "-A INPUT -s $network -i $iface -j in-$iface"
-        echo "-A OUTPUT -d $network -o $iface -j out-$iface"
-        echo "-A FORWARD -s $network -i $iface -j fwd-$iface"
-        echo "-A INPUT -s $network -i $iface -j dns-in-$iface"
-        echo "-A OUTPUT -d $network -o $iface -j dns-out-$iface"
-        echo "-A FORWARD -s $network -i $iface -j dns-fwd-$iface" 
-      done >&5
+        IPT_FILTER "-A INPUT -s $network -i $iface -j in-$iface"
+        IPT_FILTER "-A OUTPUT -d $network -o $iface -j out-$iface"
+        IPT_FILTER "-A FORWARD -s $network -i $iface -j fwd-$iface"
+        IPT_FILTER "-A INPUT -s $network -i $iface -j dns-in-$iface"
+        IPT_FILTER "-A OUTPUT -d $network -o $iface -j dns-out-$iface"
+        IPT_FILTER "-A FORWARD -s $network -i $iface -j dns-fwd-$iface" 
+      done
     else
       echo "WARNING: Interface $iface has no network file"
     fi
-    echo "-A PREROUTING -i $iface -j pre-$iface" >&6
-    echo "-A POSTROUTING -o $iface -j post-$iface" >&6
-    echo "-A PREROUTING -i $iface -j dns-pre-$iface" >&6
-    echo "-A POSTROUTING -o $iface -j dns-post-$iface" >&6
+    IPT_NAT "-A PREROUTING -i $iface -j pre-$iface"
+    IPT_NAT "-A POSTROUTING -o $iface -j post-$iface"
+    IPT_NAT "-A PREROUTING -i $iface -j dns-pre-$iface"
+    IPT_NAT "-A POSTROUTING -o $iface -j dns-post-$iface"
   fi
 done
 
 echo "Loopback Interface is fine"
-echo "-A OUTPUT	-j ACCEPT -o lo" >&5
-echo "-A INPUT	-j ACCEPT -i lo" >&5
+IPT_FILTER "-A OUTPUT	-j ACCEPT -o lo"
+IPT_FILTER "-A INPUT	-j ACCEPT -i lo"
 
 if [ -e ./script-pre ]; then
   echo "Hook: script-pre"
@@ -245,7 +246,7 @@ lihas_ipt_nonat () {
     fi
   else
     if [ $dport == "0" ]; then
-      echo "-A post-$iface -s $snet -d $dnet -p $proto -j ACCEPT " >&6
+      IPT_NAT "-A post-$iface -s $snet -d $dnet -p $proto -j ACCEPT "
     else
       echo "-A post-$iface -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT" >> $outfile
     fi
@@ -283,7 +284,7 @@ lihas_ipt_dnat () {
   else
     if [ $dnet == ACCEPT ]; then
       if [ $dport == "0" ]; then
-        echo "-A pre-$iface -s $mnet -p $proto -j ACCEPT" >&6
+        IPT_NAT "-A pre-$iface -s $mnet -p $proto -j ACCEPT"
       else
         if [ $proto == "icmp" ]; then
           echo "-A pre-$iface -s $mnet -p $proto --icmp-type $dport -j ACCEPT" >> $outfile
@@ -293,7 +294,7 @@ lihas_ipt_dnat () {
       fi
     else
       if [ $dport == "0" ]; then
-        echo "-A pre-$iface -d $dnet -p $proto -j DNAT --to-destination $mnet" >&6
+        IPT_NAT "-A pre-$iface -d $dnet -p $proto -j DNAT --to-destination $mnet"
       else
         ndport=${ndport//:/-}
         if [ $proto == "icmp" ]; then
@@ -336,7 +337,7 @@ lihas_ipt_snat () {
   else
     if [ $dnet == ACCEPT ]; then
       if [ $dport == "0" ]; then
-        echo "-A post-$iface -s $snet -p $proto -j ACCEPT" >&6
+        IPT_NAT "-A post-$iface -s $snet -p $proto -j ACCEPT"
       else
         if [ $proto == "icmp" ]; then
           echo "-A post-$iface -s $snet -p $proto --icmp-type  $dport -j ACCEPT" >> $outfile
@@ -346,7 +347,7 @@ lihas_ipt_snat () {
       fi
     else
       if [ $dport == "0" ]; then
-        echo "-A post-$iface -s $snet -p $proto -j SNAT --to-source $mnet" >&6
+        IPT_NAT "-A post-$iface -s $snet -p $proto -j SNAT --to-source $mnet"
       else
         if [ $proto == "icmp" ]; then
           echo "-A post-$iface -s $snet -p $proto --icmp-type  $dport -j SNAT --to-source $mnet" >> $outfile
@@ -440,25 +441,25 @@ lihas_ipt_privclients () {
   else
     if [ $dport == "0" ]; then
       if [ "ga$oiface" == "ga" ]; then
-        echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -j ACCEPT" >&5
-        echo "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -j ACCEPT" >&5
+        IPT_FILTER "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -j ACCEPT"
+        IPT_FILTER "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -j ACCEPT"
       else
-        echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -o $oiface -j ACCEPT" >&5
+        IPT_FILTER "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -o $oiface -j ACCEPT"
       fi
     else
       if [ "ga$oiface" == "ga" ]; then
         if [ $proto == "icmp" ]; then
-          echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -j ACCEPT" >&5
-          echo "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -j ACCEPT" >&5
+          IPT_FILTER "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -j ACCEPT"
+          IPT_FILTER "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -j ACCEPT"
         else 
-          echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT" >&5
-          echo "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT" >&5
+          IPT_FILTER "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT"
+          IPT_FILTER "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT"
         fi
       else
         if [ $proto == "icmp" ]; then
-          echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -o $oiface -j ACCEPT" >&5
+          IPT_FILTER "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -o $oiface -j ACCEPT"
         else 
-          echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -o $oiface -j ACCEPT" >&5
+          IPT_FILTER "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -o $oiface -j ACCEPT"
         fi
       fi
     fi
@@ -478,8 +479,8 @@ done
 
 
 echo Policy Routing
-echo "-I PREROUTING -j MARK --set-mark 0" >&7
-echo "-I OUTPUT -j MARK --set-mark 0" >&7
+IPT_MANGLE "-I PREROUTING -j MARK --set-mark 0"
+IPT_MANGLE "-I OUTPUT -j MARK --set-mark 0"
 for policy in policy-routing-*; do
   policy=${policy#policy-routing-}
   if ! ip route ls table $policy >/dev/null 2>&1; then
@@ -524,11 +525,11 @@ for iface in interface-*; do
     while read snet dnet proto dport policy; do
       mark=$(cat policy-routing-$policy/key)
       if [ $dport == "0" ]; then
-          echo "-A OUTPUT -s $snet -d $dnet -p $proto -j MARK --set-mark $mark" >&7
-          echo "-A PREROUTING -s $snet -d $dnet -p $proto -j MARK --set-mark $mark" >&7
+          IPT_MANGLE "-A OUTPUT -s $snet -d $dnet -p $proto -j MARK --set-mark $mark" 
+          IPT_MANGLE "-A PREROUTING -s $snet -d $dnet -p $proto -j MARK --set-mark $mark"
       else
-          echo "-A OUTPUT -s $snet -d $dnet -p $proto --dport $dport -j MARK --set-mark $mark" >&7
-          echo "-A PREROUTING -s $snet -d $dnet -p $proto --dport $dport -j MARK --set-mark $mark" >&7
+          IPT_MANGLE "-A OUTPUT -s $snet -d $dnet -p $proto --dport $dport -j MARK --set-mark $mark"
+          IPT_MANGLE "-A PREROUTING -s $snet -d $dnet -p $proto --dport $dport -j MARK --set-mark $mark"
       fi
     done
   fi
@@ -559,25 +560,25 @@ lihas_ipt_nolog () {
   else
     if [ $dport == "0" ]; then
       if [ "ga$oiface" == "ga" ]; then
-        echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -j DROP" >&5
-        echo "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -j DROP" >&5
+        IPT_FILTER "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -j DROP"
+        IPT_FILTER "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -j DROP"
       else
-        echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -o $oiface -j DROP" >&5
+        IPT_FILTER "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -o $oiface -j DROP"
       fi
     else
       if [ "ga$oiface" == "ga" ]; then
         if [ $proto == "icmp" ]; then
-          echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -j DROP" >&5
-          echo "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -j DROP" >&5
+          IPT_FILTER "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -j DROP"
+          IPT_FILTER "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -j DROP"
         else 
-          echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -j DROP" >&5
-          echo "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -j DROP" >&5
+          IPT_FILTER "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -j DROP"
+          IPT_FILTER "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -j DROP"
         fi
       else
         if [ $proto == "icmp" ]; then
-          echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -o $oiface -j DROP" >&5
+          IPT_FILTER "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -o $oiface -j DROP"
         else 
-          echo "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -o $oiface -j DROP" >&5
+          IPT_FILTER "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -o $oiface -j DROP"
         fi
       fi
     fi
@@ -597,8 +598,8 @@ done
 
 lihas_ipt_mark_dhcpd () {
   iface=$1
-  echo "-A INPUT -i $iface -p udp --sport 68 --dport 67 -j ACCEPT" >&5
-  echo "-A OUTPUT -o $iface -p udp --sport 67 --dport 68 -j ACCEPT" >&5
+  IPT_FILTER "-A INPUT -i $iface -p udp --sport 68 --dport 67 -j ACCEPT"
+  IPT_FILTER "-A OUTPUT -o $iface -p udp --sport 67 --dport 68 -j ACCEPT"
 }
 for iface in interface-*; do
   iface=${iface#interface-}
@@ -609,7 +610,7 @@ for iface in interface-*; do
 done
 
 for chain in INPUT OUTPUT FORWARD; do
-  echo "-A $chain -j $TARGETLOG" >&5
+  IPT_FILTER "-A $chain -j $TARGETLOG"
 done
 
 if [ -e ./script-post ]; then
