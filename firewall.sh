@@ -108,12 +108,13 @@ if [ $? -eq 0 ]; then
 fi
 # check if ipset is available
 if [ type -a ipset > /dev/null ]; then
-  ipset create lihas-moduletest bitmap:ip,mac range 127.0.0.0/24
+  ipset create -exist lihas-moduletest bitmap:ip,mac range 127.0.0.0/24
   if [ $? -eq 0 ]; then
     iptables -A lihas-moduletest -m set --match-set lihas-moduletest src,src 2>/dev/null >&2
     if [ $? -eq 0 ]; then
       HAVE_IPSET=1
     fi
+    iptables -F lihas-moduletest 2>/dev/null >&2
     ipset destroy lihas-moduletest
   fi
 fi
@@ -136,8 +137,10 @@ export TARGETLOG HAVE_COMMENT HAVE_LOG HAVE_ULOG HAVE_IPSET
 . $LIBDIR/helper-dns.sh
 . $LIBDIR/helper-group.sh
 . $LIBDIR/lihas_ipt_reject.sh
+. $LIBDIR/lihas_ipt_dnat.sh
 . $LIBDIR/ipset-setup.sh
 . $LIBDIR/iptables-wrapper.sh
+. $LIBDIR/feature-portal.sh
 
 echo "Allowing all established Connections"
 for chain in INPUT OUTPUT FORWARD; do
@@ -248,7 +251,7 @@ lihas_ipt_nonat () {
     if [ $dport == "0" ]; then
       IPT_NAT "-A post-$iface -s $snet -d $dnet -p $proto -j ACCEPT "
     else
-      echo "-A post-$iface -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT" >> $outfile
+      IPT_NAT "-A post-$iface -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT"
     fi
   fi
 }
@@ -265,55 +268,14 @@ for iface in interface-*; do
 done
 
 echo "Adding DNAT"
-lihas_ipt_dnat () {
-  outfile=$1
-  dnet=$2
-  mnet=$3
-  proto=$4
-  dport=$5
-  ndport=$6
-  if [ $dnet == "include" ]; then
-    if [ -e $mnet ]; then
-      cat $mnet | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
-      while read dnet mnet proto dport ndport; do
-        lihas_ipt_dnat "$outfile" "$dnet" "$mnet" "$proto" "$dport" "$ndport"
-      done
-    else
-      echo "$mnet doesn't exist"
-    fi
-  else
-    if [ $dnet == ACCEPT ]; then
-      if [ $dport == "0" ]; then
-        IPT_NAT "-A pre-$iface -s $mnet -p $proto -j ACCEPT"
-      else
-        if [ $proto == "icmp" ]; then
-          echo "-A pre-$iface -s $mnet -p $proto --icmp-type $dport -j ACCEPT" >> $outfile
-        else 
-          echo "-A pre-$iface -s $mnet -p $proto --dport $dport -j ACCEPT" >> $outfile
-        fi
-      fi
-    else
-      if [ $dport == "0" ]; then
-        IPT_NAT "-A pre-$iface -d $dnet -p $proto -j DNAT --to-destination $mnet"
-      else
-        ndport=${ndport//:/-}
-        if [ $proto == "icmp" ]; then
-          echo "-A pre-$iface -d $dnet -p $proto --icmp-type $dport -j DNAT --to-destination $mnet:$ndport" >> $outfile
-        else 
-          echo "-A pre-$iface -d $dnet -p $proto --dport $dport -j DNAT --to-destination $mnet:$ndport" >> $outfile
-        fi
-      fi
-    fi
-  fi
-}
-
 for iface in interface-*; do
   iface=${iface#interface-}
+  chain="pre-$iface"
   if [ -e interface-$iface/dnat ]; then
     [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
     cat interface-$iface/dnat | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read dnet mnet proto dport ndport; do
-      lihas_ipt_dnat "$FILEnat" "$dnet" "$mnet" "$proto" "$dport" "$ndport"
+      lihas_ipt_dnat "$chain" "$dnet" "$mnet" "$proto" "$dport" "$ndport"
     done
   fi
 done
@@ -340,9 +302,9 @@ lihas_ipt_snat () {
         IPT_NAT "-A post-$iface -s $snet -p $proto -j ACCEPT"
       else
         if [ $proto == "icmp" ]; then
-          echo "-A post-$iface -s $snet -p $proto --icmp-type  $dport -j ACCEPT" >> $outfile
+          IPT_NAT "-A post-$iface -s $snet -p $proto --icmp-type  $dport -j ACCEPT"
         else
-          echo "-A post-$iface -s $snet -p $proto --dport $dport -j ACCEPT" >> $outfile
+          IPT_NAT "-A post-$iface -s $snet -p $proto --dport $dport -j ACCEPT"
         fi
       fi
     else
@@ -350,9 +312,9 @@ lihas_ipt_snat () {
         IPT_NAT "-A post-$iface -s $snet -p $proto -j SNAT --to-source $mnet"
       else
         if [ $proto == "icmp" ]; then
-          echo "-A post-$iface -s $snet -p $proto --icmp-type  $dport -j SNAT --to-source $mnet" >> $outfile
+          IPT_NAT "-A post-$iface -s $snet -p $proto --icmp-type  $dport -j SNAT --to-source $mnet"
         else
-          echo "-A post-$iface -s $snet -p $proto --dport $dport -j SNAT --to-source $mnet" >> $outfile
+          IPT_NAT "-A post-$iface -s $snet -p $proto --dport $dport -j SNAT --to-source $mnet"
         fi
       fi
     fi
@@ -388,12 +350,12 @@ lihas_ipt_masquerade () {
     fi
   else
     if [ $dport == "0" ]; then
-      echo "-A post-$iface -s $snet -p $proto -j MASQUERADE" >> $outfile
+      IPT_NAT "-A post-$iface -s $snet -p $proto -j MASQUERADE"
     else
       if [ $proto == "icmp" ]; then
-        echo "-A post-$iface -s $snet -p $proto --icmp-type  $dport -j MASQUERADE" >> $outfile
+        IPT_NAT "-A post-$iface -s $snet -p $proto --icmp-type  $dport -j MASQUERADE"
       else 
-        echo "-A post-$iface -s $snet -p $proto --dport $dport -j MASQUERADE" >> $outfile
+        IPT_NAT "-A post-$iface -s $snet -p $proto --dport $dport -j MASQUERADE"
       fi
     fi
   fi
