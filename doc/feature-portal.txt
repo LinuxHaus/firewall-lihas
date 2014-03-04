@@ -1,0 +1,14 @@
+Captive Portal support for portal named $portalname:
+- 1 network interface name per line to be guarded by this portal
+  in $CONFIGDIR/feature/portal/$portalname/interfaces.
+  There is only one supported portal per interface.
+- $CONFIGDIR/feature/portal/$portalname/ipset-name
+- $CONFIGDIR/feature/portal/$portalname/dbsetup
+- $CONFIGDIR/feature/portal/$portalname/dnat: unknown clients are
+  handled here, e.g. redirect to portal website
+- $CONFIGDIR/feature/portal/$portalname/privclients: unknown clients may
+  access certain things, e.g. DNS
+
+Restrictions:
+- maximum name length for portal: 21 characters
+- no dns-targets in portal dnat and privclients
