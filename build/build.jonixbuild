@@ -4,7 +4,7 @@ VERSION=$(git describe)
 version=$(cd $CWD; git describe | cut -d'-' -f1)
 git_id=$(cd $CWD; git describe | cut -d'-' -f3)
 #VERSION=$(cd $CWD; git describe | cut -d'-' -f1)
-VERSION=$version$git_id
+VERSION=$version.$git_id
 BUILD=$(cd $CWD; git describe | cut -d'-' -f2)
 echo version $VERSION
 #BUILD=2
@@ -88,6 +88,8 @@ build () {
 	cp -a groups $PKG/etc/firewall.lihas.d
 	cp -a bin/firewall-lihasd.pl $PKG/usr/sbin/
 	$FAKEROOT chmod 0755 $PKG/usr/sbin/firewall-lihasd.pl
+	cp -a bin/firewall-lihas-watchdog-cron.sh $PKG/usr/bin/
+	$FAKEROOT chmod 0755 $PKG/usr/bin/firewall-lihas-watchdog-cron.sh
 	cp -a lib/*.sh $PKG/usr/lib/firewall-lihas/
 	cp -a lib/LiHAS $PKG/usr/share/perl5/
 	$FAKEROOT chmod 0755 $PKG/usr/lib/firewall-lihas/*.sh
