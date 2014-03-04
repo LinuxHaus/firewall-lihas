@@ -190,6 +190,9 @@ for iface in interface-*; do
   IPT_NAT "-A POSTROUTING -o $iface -j post-$iface"
 done
 
+echo "Policy Routing"
+portal_setup
+
 echo "Setting up Chains"
 for iface in interface-*; do
   iface=${iface#interface-}
@@ -605,6 +608,12 @@ case "$1" in
   test)
         do_start
 	echo "Check $FILE to see what it would look like"
+	if [ -s "$LOGSTARTUP" ]; then
+	  echo
+	  echo "********************************************************************************"
+	  echo "Potential showstoppers:"
+	  cat $LOGSTARTUP
+        fi
 	;;
   start)
         [ "$VERBOSE" != no ] && log_daemon_msg "Starting $DESC" "$NAME"
