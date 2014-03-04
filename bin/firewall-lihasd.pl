@@ -29,7 +29,7 @@ if (! Log::Log4perl::initialized()) { WARN "uninit"; } else { WARN "init"; }
 =head1 NAME
 
 firewall-lihasd
-Daemon supporting firewall-lihas.de by resolving dns-names
+Daemon supporting firewall-lihas by resolving dns-names
 
 =cut
 
