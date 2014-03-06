@@ -1,6 +1,4 @@
 #!/bin/bash
-
-
 ### BEGIN INIT INFO
 # Provides:          firewall
 # Required-Start:    $local_fs
@@ -10,14 +8,10 @@
 # Short-Description: LiHAS Firewall
 # Description:       Firewall
 ### END INIT INFO
-
 # Author: Adrian Reyer <are@lihas.de>
-# $Id$
-#
 
 # Do NOT "set -e"
 
-# PATH should only include /usr/* if it runs after the mountnfs.sh script
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="LiHAS Firewall"
 NAME=firewall
