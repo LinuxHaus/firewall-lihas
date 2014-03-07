@@ -7,7 +7,7 @@ Captive Portal support for portal named $portalname:
 - $CONFIGDIR/feature/portal/$portalname/dnat: unknown clients are
   handled here, e.g. redirect to portal website
 - $CONFIGDIR/feature/portal/$portalname/privclients: unknown clients may
-  access certain things, e.g. DNS
+  access certain things, e.g. DNS, portal website
 
 Restrictions:
 - maximum name length for portal: 21 characters
@@ -24,28 +24,3 @@ echo wlan1 > /etc/firewall.lihas.d/feature/portal/testportal/interfaces
 echo "0.0.0.0/0 192.168.15.1 tcp 81" > /etc/firewall.lihas.d/feature/portal/testportal/privclients
 echo "0.0.0.0/0 192.168.15.1 tcp 82" >> /etc/firewall.lihas.d/feature/portal/testportal/privclients
 echo "0.0.0.0/0 192.168.15.1 tcp 80 81" > /etc/firewall.lihas.d/feature/portal/testportal/dnat
-cat <<EOF > /etc/firewall.lihas.d/feature/portal/testportal/portalredirect
-HTTP/1.1 302 OK
-Location: http://portalserver.lan:82/
-Expires: Sat, 01 Jan 2000 00:00:00 GMT
-Connection: close
-
-EOF
-
-cat <<EOF > /etc/xinetd.d/portalredirect
-service portalredirect
-{
-    disable     = no
-    id          = portalredirect
-    type        = UNLISTED
-    socket_type = stream
-    protocol    = tcp 
-    wait        = no
-    user        = nobody
-    port        = 81
-    server      = /bin/cat
-    server_args = /etc/firewall.lihas.d/feature/portal/testportal/portalredirect
-}
-EOF
-
-/etc/init.d/xinetd restart

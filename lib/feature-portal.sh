@@ -88,7 +88,6 @@ portal_setup () {
             cat $CONFIGDIR/feature/portal/$portalname/interfaces | sed '/^[ \t]*$/d; /^#/d' |
             while read iface; do
               IPT_NAT    "-A PREROUTING -i $iface -j portal-$portalname"
-              IPT_NAT    "-A OUTPUT -i $iface -j portal-$portalname"
             done
           fi
         fi

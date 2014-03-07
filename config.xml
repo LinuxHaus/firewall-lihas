@@ -11,8 +11,13 @@
       <table name="hostnames_current">CREATE TABLE IF NOT EXISTS hostnames_current ( hostname TEXT NOT NULL, time_first INTEGER NOT NULL, time_valid_till INTEGER NOT NULL, ip TEXT NOT NULL );</table>
       <table name="vars_num"  >CREATE TABLE IF NOT EXISTS vars_num ( name TEXT NOT NULL, value INTEGER );</table>
       <index name="activedns" >CREATE INDEX IF NOT EXISTS activedns ON dnshistory (active, hostname);</index>
+      <table name="portal_clients">CREATE TABLE IF NOT EXISTS portal_clients ( portalname TEXT NOT NULL, ip TEXT NOT NULL, mac INTEGER NOT NULL, start_date TEXT NOT NULL, end_date TEXT NOT NULL, active INTEGER);</table>
+      <table name="portal_clienthistory">CREATE TABLE IF NOT EXISTS portal_clienthistory ( portalname TEXT NOT NULL, ip TEXT NOT NULL, mac INTEGER NOT NULL, start_date TEXT NOT NULL, end_date TEXT NOT NULL);</table>
     </create>
   </database>
+  <feature>
+    <portal enabled="1" /><!-- make sure you have ipset support -->
+  </feature>
   <policies count="1">
     <policy
       name="dsl"               cmt0="name der policy"

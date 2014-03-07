@@ -48,6 +48,7 @@ use POE qw(Component::Client::Ping Component::Client::DNS );
 use lib "/etc/firewall.lihas.d/lib";
 use LiHAS::Firewall::Ping;
 use LiHAS::Firewall::DNS;
+use LiHAS::Firewall::Portal;
 use DBI;
 
 my $cfg = new XML::Application::Config("LiHAS-Firewall","/etc/firewall.lihas.d/config.xml");
@@ -60,7 +61,6 @@ Reloads the iptables dns-* chains with current IPs from database
 =cut
 sub firewall_reload_dns {
   my ($kernel, $session, $heap) = @_[KERNEL, SESSION, HEAP];
-  if (! Log::Log4perl::initialized()) { DEBUG "firewall_reload_dns: uninit"; } else { DEBUG "firewall_reload_dns: init"; }
   my @replacedns;
   my ($hostname, $ip, $table);
   my ($dh, $fh, $line, $iptupdate, $iptflush, $flushline);
@@ -116,12 +116,10 @@ sub firewall_reload_dns {
 }
 
 =head2 firewall_find_dnsnames
-
 checks the firewall config groups/hostname-* for dns-names and adds syncs them with the list of names to be checked
 =cut
 sub firewall_find_dnsnames {
   my ($kernel, $session, $heap) = @_[KERNEL, SESSION, HEAP];
-  if (! Log::Log4perl::initialized()) { DEBUG "firewall_find_dnsnames: uninit"; } else { DEBUG "firewall_find_dnsnames: init"; }
   my $line;
   my $fh;
   my $hostname;
@@ -163,7 +161,6 @@ Setup the db according to the config.xml
 =cut
 sub firewall_create_db {
   my ($kernel, $heap) = @_[KERNEL, HEAP];
-  if (! Log::Log4perl::initialized()) { DEBUG "firewall_create_db: uninit"; } else { DEBUG "firewall_create_db: init"; }
   foreach my $sql (split(/;/,$cfg->find('database/create'))) {
     if ( defined $sql ) {
       chomp $sql;
@@ -173,20 +170,60 @@ sub firewall_create_db {
   }
 }
 
+
+use POE::Component::Server::TCP;
+use XML::XPath;
+
+
 sub session_default {
   my ($event, $args) = @_[ARG0, ARG1];
-  if (! Log::Log4perl::initialized()) { DEBUG "session_default: uninit"; } else { DEBUG "session_default: init"; }
   ERROR( "Session ", $_[SESSION]->ID, " caught unhandled event $event with (@$args).\n");
 }
 
+=head2 
+manage_server
+paste xml-like stuff:
+<application name="LiHAS-Firewall"><manage><feature><portal><cmd name="reload">reload</cmd></portal></feature></manage></application>
+=cut
+
+sub manage_server {
+  POE::Component::Server::TCP->new(
+    Address => '127.0.0.1',
+    Port => 83,
+    ClientConnected => sub {
+      $_[HEAP]{client}->put("<application name=\"LiHAS-Firewall\"></application>");
+      if (! Log::Log4perl::initialized()) { WARN "uninit"; } else { WARN "init"; }
+    },
+
+    ClientInput => sub {
+      my ($sender, $kernel, $client_input) = @_[SESSION, KERNEL, ARG0];
+      $kernel->post(firewalld => manage_server_got_line => $sender->postback('client_output'), $client_input);
+    },
+
+    InlineStates => {
+      client_output => sub {
+        my ($heap, $response) = @_[HEAP, ARG1];
+        $heap->{client}->put($response->[0]) if defined $heap->{client};
+            # that is, if $heap->{client} is still connected
+        $_[KERNEL]->yield("shutdown");
+      },
+    },
+  );
+}
+
+=head2
+session_start
+=cut
 sub session_start {
   my ($kernel, $heap) = @_[KERNEL, HEAP];
-  if (! Log::Log4perl::initialized()) { DEBUG "session_start: uninit"; } else { DEBUG "session_start: init"; }
   $heap->{dbh} = DBI->connect($cfg->find('database/dbd/@connectorstring'));
   $heap->{datapath} = $cfg->find('config/@db_dbd');
 
   firewall_create_db(@_);
   # fw dns-rules need a reload for initially
+
+  $kernel->alias_set('firewalld');
+
   my $sql = "DELETE FROM vars_num WHERE name=?";
   my $sth = $heap->{dbh}->prepare($sql);
   $sth->execute('fw_reload_dns');
@@ -196,21 +233,23 @@ sub session_start {
 
   $heap->{refresh_dns_config} = $cfg->find('dns/@refresh_dns_config');
   $heap->{refresh_dns_minimum} = $cfg->find('dns/@refresh_dns_minimum');
+  $heap->{feature_portal} = $cfg->find('feature/portal/@enabled');
   $kernel->yield('timer_ping');
   $kernel->yield('firewall_find_dnsnames');
+  $kernel->yield('portal_ipset_init');
   $kernel->yield('dns_update');
   $kernel->yield('firewall_reload_dns');
+  manage_server();
   return 0;
 }
 
 sub session_stop {
   my ($kernel, $heap) = @_[KERNEL, HEAP];
-  DEBUG "session_stop\n";
   $heap->{dbh}->disconnect;
   return 0;
 }
 
-POE::Session->create(
+our $mainsession = POE::Session->create(
   inline_states => {
     _start => \&session_start,
     _stop => \&session_stop,
@@ -222,12 +261,36 @@ POE::Session->create(
     dns_update => \&LiHAS::Firewall::DNS::dns_update,
     dns_query => \&LiHAS::Firewall::DNS::dns_query,
     dns_response => \&LiHAS::Firewall::DNS::dns_response,
+    portal_ipset_init => \&LiHAS::Firewall::Portal::portal_ipset_init,
     firewall_find_dnsnames => \&firewall_find_dnsnames,
     firewall_reload_dns => \&firewall_reload_dns,
+    manage_server_got_line => sub {
+      my ($kernel, $heap, $postback, $client_input) = @_[KERNEL, HEAP, ARG0 .. $#_];
+      # stash the postback on the heap
+      $heap->{postback} = $postback;
+      $kernel->yield(manage_server_eval_line => $client_input);
+    },
+    manage_server_eval_line => sub {
+      my ($heap, $client_input) = @_[HEAP, ARG0 .. $#_];
+      my $postback = $heap->{postback};
+      my $client_output;
+
+      my $request = XML::XPath->new(xml => $client_input);
+      foreach my $cmd ( $request->findvalue('//cmd[@name]') ) {
+        if ( $cmd =~ /^reload$/ ) {
+	  $_[KERNEL]->yield('portal_ipset_init');
+	  $client_output="<application name=\"LiHAS-Firewall\"><response>$cmd started</respnse></application>";
+	} else {
+	  $client_output="<application name=\"LiHAS-Firewall\"><response>Unknown command $cmd</response></application>";
+        };
+      }
+      $postback->($client_output);
+    },
   }
-);
+)->ID;
+
+LiHAS::Firewall::Portal->http_redirector();
 
 DEBUG "kernel-run\n";
 POE::Kernel->run();
-
 exit 0;
