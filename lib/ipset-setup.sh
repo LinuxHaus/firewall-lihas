@@ -5,6 +5,7 @@ if [ "x$HAVE_IPSET" == "x1" ]; then
       ipsetname=${ipsetdir##$CONFIGDIR/groups/ipset/ipset-}
       if [ -e $ipsetdir/setup ]; then
         ipset create -exist $ipsetname $(cat $ipsetdir/setup)
+        ipset create -exist pswap$ipsetname $(cat $ipsetdir/setup)
         dummy=$(ipset -L $ipsetname | 
           while read a b; do
             if [ x$a == "xType:" ]; then
