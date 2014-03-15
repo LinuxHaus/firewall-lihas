@@ -11,12 +11,23 @@
       <table name="hostnames_current">CREATE TABLE IF NOT EXISTS hostnames_current ( hostname TEXT NOT NULL, time_first INTEGER NOT NULL, time_valid_till INTEGER NOT NULL, ip TEXT NOT NULL );</table>
       <table name="vars_num"  >CREATE TABLE IF NOT EXISTS vars_num ( name TEXT NOT NULL, value INTEGER );</table>
       <index name="activedns" >CREATE INDEX IF NOT EXISTS activedns ON dnshistory (active, hostname);</index>
-      <table name="portal_clients">CREATE TABLE IF NOT EXISTS portal_clients ( portalname TEXT NOT NULL, ip TEXT NOT NULL, mac INTEGER NOT NULL, start_date TEXT NOT NULL, end_date TEXT NOT NULL, active INTEGER);</table>
+      <table name="portal_clients">CREATE TABLE IF NOT EXISTS portal_clients ( id INTEGER PRIMARY KEY, portalname TEXT NOT NULL, ip TEXT NOT NULL, mac INTEGER NOT NULL, start_date TEXT NOT NULL, end_date TEXT NOT NULL, active INTEGER, userid INTEGER);</table>
       <table name="portal_clienthistory">CREATE TABLE IF NOT EXISTS portal_clienthistory ( portalname TEXT NOT NULL, ip TEXT NOT NULL, mac INTEGER NOT NULL, start_date TEXT NOT NULL, end_date TEXT NOT NULL);</table>
+      <table name="portal_users">CREATE TABLE IF NOT EXISTS portal_users ( id INTEGER PRIMARY KEY, name TEXT NOT NULL, pass TEXT NOT NULL, start_date TEXT NOT NULL, end_date TEXT NOT NULL, max_duration TEXT, max_clients TEXT, start_use TEXT);</table>
+      <table name="portal_usershistory">CREATE TABLE IF NOT EXISTS portal_usershistory ( name TEXT NOT NULL, pass TEXT NOT NULL, start_date TEXT NOT NULL, end_date TEXT NOT NULL);</table>
     </create>
   </database>
   <feature>
-    <portal enabled="1" /><!-- make sure you have ipset support -->
+    <portal enabled="1">
+      <name>testportal</name>
+      <session><expire>43200<!-- 12 hours = 60*60*12s --></expire></session>
+      <password><sms><expire>259200<!-- 3 days = 60*60*24*3s --></expire></sms></password>
+      <password><sms><clients_max>3<!-- 3 concurrent clients --></clients_max></sms></password>
+      <password><sms><mobilant><key>KEY<!-- SMS via http://www.mobilant.de/ --></key></mobilant></sms></password>
+      <password><sms><mobilant><from>WLAN-AP<!-- SMS via http://www.mobilant.de/ --></from></mobilant></sms></password>
+      <page_ok>http://portalserver.lan/ok.html</page_ok>
+      <page_error>http://portalserver.lan/error.html</page_error>
+    </portal><!-- make sure you have ipset support -->
   </feature>
   <policies count="1">
     <policy

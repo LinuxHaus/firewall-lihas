@@ -37,6 +37,7 @@ sub portal_ipset_init {
   my ($ipsetname,$ip,$mac,$start_date,$end_date);
   my $sql = "UPDATE portal_clients SET active=0";
   my $sth = $heap->{dbh}->prepare($sql);
+  $sth->execute();
   my $sth1;
   my $time=0;
   my $timestamp=time();
@@ -47,7 +48,7 @@ sub portal_ipset_init {
   $sth->execute();
   $sth->bind_columns(\$ipsetname);
   while ( $sth->fetch ) {
-    print IPSET 'flush pswap$ipsetname\n';
+    print IPSET "flush pswap$ipsetname\n";
   }
 # fill ipset
   $sql = "SELECT DISTINCT portalname,ip,mac,start_date,end_date FROM portal_clients WHERE start_date<? AND end_date>? AND active=0";

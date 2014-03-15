@@ -279,7 +279,7 @@ our $mainsession = POE::Session->create(
       foreach my $cmd ( $request->findvalue('//cmd[@name]') ) {
         if ( $cmd =~ /^reload$/ ) {
 	  $_[KERNEL]->yield('portal_ipset_init');
-	  $client_output="<application name=\"LiHAS-Firewall\"><response>$cmd started</respnse></application>";
+	  $client_output="<application name=\"LiHAS-Firewall\"><response>$cmd started</response></application>";
 	} else {
 	  $client_output="<application name=\"LiHAS-Firewall\"><response>Unknown command $cmd</response></application>";
         };

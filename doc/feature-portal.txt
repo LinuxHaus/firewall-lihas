@@ -15,7 +15,7 @@ Restrictions:
 
 Sample:
 Create a portal 'testportal' using ipset 'testportal', ip-range of
-clients is 192.168.15.0/24 on wlan1:
+clients is 192.168.15.0/24 on wlan1, portalserver is 192.168.15.1:
 mkdir -p /etc/firewall.lihas.d/feature/portal/testportal
 echo testportal > /etc/firewall.lihas.d/feature/portal/testportal/ipset-name
 mkdir -p /etc/firewall.lihas.d/groups/ipset/ipset-testportal
@@ -24,3 +24,16 @@ echo wlan1 > /etc/firewall.lihas.d/feature/portal/testportal/interfaces
 echo "0.0.0.0/0 192.168.15.1 tcp 81" > /etc/firewall.lihas.d/feature/portal/testportal/privclients
 echo "0.0.0.0/0 192.168.15.1 tcp 82" >> /etc/firewall.lihas.d/feature/portal/testportal/privclients
 echo "0.0.0.0/0 192.168.15.1 tcp 80 81" > /etc/firewall.lihas.d/feature/portal/testportal/dnat
+
+echo 192.168.15.1 portalserver.lan >> /etc/hosts
+mkdir -p /var/www/portalserver.lan
+
+a2ensite 001-portalserver.lan.conf
+https://fw02.ukbw.de:8001/
+
+# www-data / webserver needs access
+chgrp www-data /var/lib/firewall-lihas/db.sqlite
+chmod g+w /var/lib/firewall-lihas/db.sqlite
+chgrp www-data /var/lib/firewall-lihas
+chmod g+w /var/lib/firewall-lihas
+
