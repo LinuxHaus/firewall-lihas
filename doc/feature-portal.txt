@@ -8,6 +8,9 @@ Captive Portal support for portal named $portalname:
   handled here, e.g. redirect to portal website
 - $CONFIGDIR/feature/portal/$portalname/privclients: unknown clients may
   access certain things, e.g. DNS, portal website
+- $CONFIGDIR/feature/portal/$portalname/clients-static: static mac/IP
+  combinations Format:
+  IP MAC Comment
 
 Restrictions:
 - maximum name length for portal: 21 characters

@@ -442,10 +442,10 @@ IPT_MANGLE "-I PREROUTING -j MARK --set-mark 0"
 IPT_MANGLE "-I OUTPUT -j MARK --set-mark 0"
 for policy in policy-routing-*; do
   policy=${policy#policy-routing-}
-  if ! ip route ls table $policy >/dev/null 2>&1; then
-    echo "Please add '$policy' to /etc/iproute2/rt_tables or policy routing won't work. If you don't want policy routing, feel free to delete $CONFIGDIR/policy-routing-$policy" | tee -a $LOGSTARTUP
-  fi
   if [ -e policy-routing-$policy/key ]; then
+    if ! ip route ls table $policy >/dev/null 2>&1; then
+      echo "Please add '$policy' to /etc/iproute2/rt_tables or policy routing won't work. If you don't want policy routing, feel free to delete $CONFIGDIR/policy-routing-$policy" | tee -a $LOGSTARTUP
+    fi
     [ -e policy-routing-$policy/comment ] && cat policy-routing-$policy/comment | sed 's/^/ /'
     key=$(cat policy-routing-$policy/key)
     if [ -e policy-routing-$policy/gateway ]; then
@@ -626,6 +626,7 @@ case "$1" in
         [ "$VERBOSE" != no ] && log_daemon_msg "Stopping $DESC" "$NAME"
         do_stop
 	kill -INT $(cat /var/state/firewall-lihasd.pid )
+	ps ax | awk '$5 ~ /^\/usr\/bin\/perl$/ && $6 ~ /firewall-lihasd.pl/ {print $1}' | xargs --no-run-if-empty kill
         ;;
   reload|force-reload)
         #

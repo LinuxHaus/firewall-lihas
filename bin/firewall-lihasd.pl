@@ -218,6 +218,8 @@ sub session_start {
   my ($kernel, $heap) = @_[KERNEL, HEAP];
   $heap->{dbh} = DBI->connect($cfg->find('database/dbd/@connectorstring'));
   $heap->{datapath} = $cfg->find('config/@db_dbd');
+  $heap->{configpath} = $cfg->find('config/@path');
+  $heap->{portalname} = $cfg->find('/applicationconfig/application/feature/portal/name');
 
   firewall_create_db(@_);
   # fw dns-rules need a reload for initially
@@ -236,6 +238,7 @@ sub session_start {
   $heap->{feature_portal} = $cfg->find('feature/portal/@enabled');
   $kernel->yield('timer_ping');
   $kernel->yield('firewall_find_dnsnames');
+  $kernel->yield('portal_init');
   $kernel->yield('portal_ipset_init');
   $kernel->yield('dns_update');
   $kernel->yield('firewall_reload_dns');
@@ -261,6 +264,7 @@ our $mainsession = POE::Session->create(
     dns_update => \&LiHAS::Firewall::DNS::dns_update,
     dns_query => \&LiHAS::Firewall::DNS::dns_query,
     dns_response => \&LiHAS::Firewall::DNS::dns_response,
+    portal_init => \&LiHAS::Firewall::Portal::portal_init,
     portal_ipset_init => \&LiHAS::Firewall::Portal::portal_ipset_init,
     firewall_find_dnsnames => \&firewall_find_dnsnames,
     firewall_reload_dns => \&firewall_reload_dns,
