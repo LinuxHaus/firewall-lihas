@@ -1,0 +1,10 @@
+/etc/ipsec.secrets needs IPs in combination with pre-shared keys.
+Best effort: use rsa-keys and get rid of the trouble, even better: use
+OpenVPN.
+If that can't be done, you may try this workaround:
+Add the necessary contents to
+/etc/firewall.lihas.d/feature/ipsec/ipsec.secrets.dns like this:
+dns-hostname.one dns-hostname.two : PSK "ThisIsTheSecretKey"
+/etc/ipsec.secrets will be enhanced with this in between the tags
+### firewall-lihas start ### and ### firewall-lihas end ###
+If IPs change, /etc/ipsec.secrets will be updated and ipsec reloaded.
