@@ -18,8 +18,14 @@
 =head1 NAME
 
 portal-cgi.pl
-
 Take credentials and redirect to next page
+Uses templates for pages:
+ok:
+registered:
+Makros:
+__REDIRECTED_URL__
+__ERRROR__
+__INFO__
 
 =cut
 
@@ -34,37 +40,45 @@ use Digest::SHA qw(sha1_base64);
 
 my $cfg = new XML::Application::Config("LiHAS-Firewall","/etc/firewall.lihas.d/config.xml");
 my $dbh = DBI->connect($cfg->find('database/dbd/@connectorstring'));
-print STDERR "DB Connect: ".$cfg->find('database/dbd/@connectorstring');
 my ($sth, $sql, $sth1);
 my ($name, $pass, $start_date, $end_date, $max_duration, $max_clients, $start_use, $userrowid);
 my ($time, $enddate);
 my ($ip, $hw, $mac, $dummy);
+my $page = $cfg->find('//feature/portal/page/@login');
 
 =head1 Functions
 =cut
 
 my $cgi = CGI->new;
 my %auth;
+my $error='';
 my $message='';
-my @param = $cgi->param;
-foreach (@param) {
-	print STDERR "$_: ".$cgi->param($_)."\n";
+my %param = $cgi->Vars;
+my ($redirect_url, $accept);
+foreach (keys(%param)) {
+	print STDERR "Parameter $_: ".$param{$_}."\n";
 }
-my $error=0;
-if ($cgi->param('accept')=~/Anmelden/ ) {
-	if (! defined $cgi->param('accept_tos') || $cgi->param('accept_tos') !~ /^ja$/) {
-	    $message = "TOS";
-	    $error = 1;
-	} elsif (! defined $cgi->param('auth_user') || $cgi->param('auth_user') !~ /^[\+0-9a-zA-Z_-]+$/) {
-	    $message = "Invalid User";
-	    $error = 1;
-	} elsif (! defined $cgi->param('auth_pass') || $cgi->param('auth_pass') !~ /^[\+0-9a-zA-Z_-]+$/) {
-	    $message = "Invalid Password";
-	    $error = 1;
+if (defined $param{'redirect_url'}) {
+	$redirect_url=$param{'redirect_url'};
+} else {
+	$redirect_url="";
+}
+if (defined $param{'accept'}) {
+	$accept = $param{'accept'};
+} else {
+	$accept="";
+}
+if ($accept=~/Anmelden/ ) {
+	if (! defined $param{'accept_tos'} || $param{'accept_tos'} !~ /^ja$/) {
+	    $error = "Please accept the Terms of Service";
+	} elsif (! defined $param{'auth_user'} || $param{'auth_user'} !~ /^[\+0-9a-zA-Z_-]+$/) {
+	    $error = "Invalid User";
+	} elsif (! defined $param{'auth_pass'} || $param{'auth_pass'} !~ /^[\+0-9a-zA-Z_-]+$/) {
+	    $error = "Invalid Password";
 	} else {
 		$sql = "SELECT name,pass,start_date,end_date,max_duration,max_clients,start_use,id FROM portal_users WHERE name=? AND pass=?";
 	  $sth = $dbh->prepare($sql);
-	  $sth->execute($cgi->param('auth_user'), $cgi->param('auth_pass'));
+	  $sth->execute($param{'auth_user'}, $param{'auth_pass'});
 	  $sth->bind_columns(\$name, \$pass, \$start_date, \$end_date, \$max_duration, \$max_clients, \$start_use, \$userrowid);
 	  while ( $sth->fetch ) {
 			$time = time();
@@ -102,10 +116,6 @@ if ($cgi->param('accept')=~/Anmelden/ ) {
 							$sth1 = $dbh->prepare($sql);
 							$sth1->execute($userrowid);
 						}
-						#my $firewallclient = new LWP::UserAgent;
-						#$firewallclient->agent("lihas-fw/1.0");
-						#my $request = new HTTP::Request('GET','<application name="LiHAS-Firewall"><manage><feature><portal><cmd name="reload">reload</cmd></portal></feature></manage></application>');
-						#my $response = $ua->request($request);
 						open(FW, "| nc localhost 83 >/dev/null 2>&1") || die "nc failed\n";
 						print FW '<application name="LiHAS-Firewall"><manage><feature><portal><cmd name="reload">reload</cmd></portal></feature></manage></application>\n';
 						close(FW);
@@ -114,7 +124,6 @@ if ($cgi->param('accept')=~/Anmelden/ ) {
 							-expires=>'Sat, 01 Jan 2000 00:00:00 GMT',
 						);
 					} else {
-						$message = "Ticket already expired.";
 # Move user to history
 						$sql = "INSERT INTO portal_usershistory (name, pass, start_date, end_date, max_duration, max_clients, start_use) VALUES (?,?,?,?,?,?,?)";
 						$sth1 = $dbh->prepare($sql);
@@ -122,47 +131,50 @@ if ($cgi->param('accept')=~/Anmelden/ ) {
 						$sql = "DELETE FROM portal_users WHERE ROWID=?";
 						$sth1 = $dbh->prepare($sql);
 						$sth1->execute($userrowid);
-						$error = 1;
+						$error = "Ticket expired";
 					}
 				} else {
-					$message = "Ticket not valid, yet.";
-					$error = 1;
+					$error = "Ticket not valid, yet.";
 				}
 			} else {
-	      $message = "Too many concurrent clients.";
-				$error = 1;
+	      $error = "Too many concurrent clients.";
 			}
 	  }
 	}
-} elsif ( $cgi->param('accept')=~/Registrieren/ ) {
+} elsif ( $accept=~/Registrieren/ ) {
 	my $hash;
 # SMS Identification
-	if (! defined $cgi->param('auth_user') || $cgi->param('auth_user') !~ /^[\+0-9]+$/) {
-	  $message = "Invalid User";
-	  $error = 1;
+	if ($param{'auth_user'} !~ /^[\+0-9]+$/) {
+	  $error = "Invalid User";
 	} else {
 	  $hash=sha1_base64(rand()*1000000000000000);
 	  $hash =~ s/^(.{8}).*/$1/;
 
 	  $sql = "INSERT INTO portal_users (name, pass, start_date, end_date, max_duration, max_clients) VALUES (?,?,?,?,?,?)";
 	  $sth1 = $dbh->prepare($sql);
-	  $sth1->execute($cgi->param('auth_user'),$hash,time(),time()+$cfg->find('feature/portal/password/sms/expire'),$cfg->find('feature/portal/session/expire'),$cfg->find('feature/portal/password/sms/clients_max'));
+	  $sth1->execute($param{'auth_user'},$hash,time(),time()+$cfg->find('feature/portal/password/sms/expire'),$cfg->find('feature/portal/session/expire'),$cfg->find('feature/portal/password/sms/clients_max'));
 	  print $cgi->header();
-		print STDERR "wget -O- https://gw.mobilant.net/?key=".$cfg->find('feature/portal/password/sms/mobilant/key')."&to=".$cgi->param('auth_user')."&message=".uri_escape($cfg->find('feature/portal/password/sms/mobilant/from')." WLAN Key: ".$hash)."&route=lowcostplus&from=".uri_escape($cfg->find('feature/portal/password/sms/mobilant/from'))." |";
-		open(SMS, "wget -O- 'https://gw.mobilant.net/?key=".$cfg->find('feature/portal/password/sms/mobilant/key')."&to=".$cgi->param('auth_user')."&message=".uri_escape($cfg->find('feature/portal/password/sms/mobilant/from')." WLAN Key: ".$hash)."&route=lowcostplus&from=".uri_escape($cfg->find('feature/portal/password/sms/mobilant/from'))."' |");
+		print STDERR "wget -O- https://gw.mobilant.net/?key=".$cfg->find('feature/portal/password/sms/mobilant/key')."&to=".$param{'auth_user'}."&message=".uri_escape($cfg->find('feature/portal/password/sms/mobilant/from')." WLAN Key: ".$hash)."&route=lowcostplus&from=".uri_escape($cfg->find('feature/portal/password/sms/mobilant/from'))." |";
+		open(SMS, "wget -O- 'https://gw.mobilant.net/?key=".$cfg->find('feature/portal/password/sms/mobilant/key')."&to=".$param{'auth_user'}."&message=".uri_escape($cfg->find('feature/portal/password/sms/mobilant/from')." WLAN Key: ".$hash)."&route=lowcostplus&from=".uri_escape($cfg->find('feature/portal/password/sms/mobilant/from'))."' |");
 		while (<SMS>) {
 			print STDERR "SMS: $_";
 		}
 		close(SMS);
+		$message = "SMS Versand erfolgreich";
 	}
-}
-
-if ( $error == 1 ) {
-	print $cgi->header();
-	print "<h1>$error</h1>"
 } else {
-	print $cgi->header();
+	# Startpage
+	$page = $cfg->find('//feature/portal/page/@login');
 }
 
+open(PAGE,$page) || die $cfg->find('//feature/portal/page/@login'), " failed";
+print $cgi->header();
+while (<PAGE>) {
+	s/__ERROR__/$error/;
+	s/__INFO__/$message/;
+	s/__REDIRECTED_URL__/$param{'redirect_url'}/;
+	print $_;
+}
+close(PAGE);
 exit 0;
 # vim: ts=2 sw=2 sts=2 sr noet

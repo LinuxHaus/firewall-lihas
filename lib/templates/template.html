@@ -1,0 +1,59 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de">
+<head>
+ <title>WLAN Login</title>
+ <meta charset="utf-8" />
+ <style>
+  div.error {color:red;}
+  div.info {color:green;}
+ </style>
+</head>
+<body>
+<div align="center">
+<h1>WLAN Login</h1>
+<div class=error>__ERROR__</div>
+<div class=info>__INFO__</div>
+Willkommen beim WLAN Login. Ein Login ist mittels Handynummer und dem per SMS erhaltenen Code möglich. Ein Code kann mit 'Registrieren' angefordert werden.
+<h2>Nutzungsbedingungen</h2>
+Gesetze, einschliesslich Jugendschutz, sind einzuhalten.
+<h2>Login</h2>
+Ich habe die oben angezeigten Nutzungsbedingungen gelesen und bin mit ihnen einverstanden!<br>
+Ohne die explizite Zustimmung kann und darf dieser Internet Access Point nicht genutzt werden!<p>
+<form name="submit_form" action="post">
+ <input type="hidden" name="redirect_url" value="__REDIRECTED_URL__"/>
+ <table>
+  <tr>
+   <td colspoan=2>
+    <input type="radio" name="accept_tos" value="nein" checked="checked">Nein, danke!</input>
+    <input type="radio" name="accept_tos" value="ja">Ja, ich akzeptiere die Nutzungsbedingungen!</input>
+   </td>
+  </tr><tr>
+   <td><b>Benutzername/Handynummer: </b></td>
+   <td><input name="auth_user" type="text"></td>
+  </tr><tr>
+   <td><b>Kennwort / Voucher / Code: </b></td>
+   <td><input name="auth_pass" type="password"></td>
+  </tr><tr>
+   <td colspan=2><input name="accept" type="submit" value="Anmelden"></td> 
+  </tr><tr>
+   <td colspan=2><b>Mit dem Anklicken von "Anmelden" akzeptiern Sie unsere Nutzungsbedingungen!</b></td>
+  </tr>
+ </table>
+</form>
+<h2>Registrierung</h2>
+<form name="submit_regform" method="post">
+ <input type="hidden" name="redirect_url" value="__REDIRECTED_URL__"/>
+ <table>
+  <tr>
+   <td colspan="2">Voucher/Kennwort generieren und per SMS empfangen</td>
+  </tr><tr>
+   <td><b>Mobilfunknummer: </b></td>
+   <td><input name="auth_user" type="text"></td>
+  </tr><tr>
+   <td colspan="2"><input name="accept" type="submit" value="Registrieren"></td> 
+  </tr>
+ </table>
+</form>
+</div>
+</body>
+</html>

@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Copyright (C) 2011-2013 Adrian Reyer support@lihas.de
+# Copyright (C) 2011-2014 Adrian Reyer support@lihas.de
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@ use POE qw(Component::Client::Ping Component::Client::DNS );
 use lib "/etc/firewall.lihas.d/lib";
 use LiHAS::Firewall::Ping;
 use LiHAS::Firewall::DNS;
-use LiHAS::Firewall::Portal;
+eval { use LiHAS::Firewall::Portal }; WARN "No portal support: $@" if $@;
 use DBI;
 
 my $cfg = new XML::Application::Config("LiHAS-Firewall","/etc/firewall.lihas.d/config.xml");
@@ -280,14 +280,16 @@ our $mainsession = POE::Session->create(
       my $client_output;
 
       my $request = XML::XPath->new(xml => $client_input);
-      foreach my $cmd ( $request->findvalue('//cmd[@name]') ) {
-        if ( $cmd =~ /^reload$/ ) {
-	  $_[KERNEL]->yield('portal_ipset_init');
+      my $cmd="";
+#      foreach my $cmd ( $request->findvalue('//cmd[@name]') ) {
+#        if ( $cmd =~ /^reload$/ ) {
+#	  $_[KERNEL]->yield('portal_ipset_init');
 	  $client_output="<application name=\"LiHAS-Firewall\"><response>$cmd started</response></application>";
-	} else {
-	  $client_output="<application name=\"LiHAS-Firewall\"><response>Unknown command $cmd</response></application>";
-        };
-      }
+#	} else {
+#	  $client_output="<application name=\"LiHAS-Firewall\"><response>Unknown command $cmd</response></application>";
+#        };
+#      }
+      $_[KERNEL]->yield('portal_ipset_init');
       $postback->($client_output);
     },
   }
