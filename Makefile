@@ -42,7 +42,7 @@ all:
 
 install:
 	install -m 0755 -d $(CFGDDIR)
-	install -m 0755 -d $(ULIBDIR) $(UBINDIR) $(USBINDIR) $(DESTDIR)/etc/init.d
+	install -m 0755 -d $(ULIBDIR) $(ULIBDIR)/templates $(UBINDIR) $(USBINDIR) $(DESTDIR)/etc/init.d
 	install -m 0755 -d $(RUNDIR)
 	install -m 0755 -d $(DESTDIR)/usr/share/perl5
 	install -m 0755 -d $(USDOCDIR)/examples
@@ -54,6 +54,7 @@ install:
 	install -m 0755 bin/firewall-lihas-watchdog-cron.sh $(UBINDIR)/
 	chmod 0755 $(UBINDIR)/firewall-lihas-watchdog-cron.sh
 	install -m 0644 lib/*.sh $(ULIBDIR)/
+	install -m 0644 lib/templates/* $(ULIBDIR)/templates/
 	cp -a lib/LiHAS $(DESTDIR)/usr/share/perl5/LiHAS
 	chmod 0755 $(ULIBDIR)/*.sh
 	install -m 0644 README $(USDOCDIR)

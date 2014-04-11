@@ -3,36 +3,12 @@ use warnings;
 use strict;
 use POE;
 use XML::Application::Config;
-use POE::Component::Server::HTTP;
-use HTTP::Status;
 use Log::Log4perl qw(:easy);
 
 sub TIMER_DELAY { 10 };
 sub PING_TIMEOUT () { 5 }; # seconds between pings
 sub PING_COUNT () { 1 }; # ping repetitions
 
-
-sub http_redirector {
-  my ($kernel,$heap,$response) = @_[KERNEL, HEAP, ARG0];
-  my $aliases = POE::Component::Server::HTTP->new(
-    Port => 81,
-    ContentHandler => {
-      '/' => \&handler1,
-    },
-    Headers => { Server => 'My Server' },
-  );
-  sub handler {
-      my ($request, $response) = @_;
-      $response->code(HTTP_TEMPORARY_REDIRECT);
-			$response->header(
-			  Location => "http://portalserver.lan:82/cgi-bin/portal-cgi.pl?redirect_url=".uri_escape($request->uri),
-				Expires => "Sat, 01 Jan 2000 00:00:00 GMT",
-				);
-      return RC_OK;
-  }
-  POE::Kernel->call($aliases->{httpd}, "shutdown");
-  POE::Kernel->call($aliases->{tcp}, "shutdown");
-}
 
 =head3 Function portal_init
 Gets called on startup to prefill database with persistent clients

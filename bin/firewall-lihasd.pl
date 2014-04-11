@@ -46,8 +46,11 @@ use XML::Application::Config;
 use POE qw(Component::Client::Ping Component::Client::DNS );
 # use Test::More skip_all => "Derzeit keine Tests";
 use lib "/etc/firewall.lihas.d/lib";
+use POE::Component::Server::HTTP;
+use HTTP::Status qw(:constants);
 use LiHAS::Firewall::Ping;
 use LiHAS::Firewall::DNS;
+use URI::Escape qw(uri_escape);
 eval { use LiHAS::Firewall::Portal }; WARN "No portal support: $@" if $@;
 use DBI;
 
@@ -177,7 +180,7 @@ use XML::XPath;
 
 sub session_default {
   my ($event, $args) = @_[ARG0, ARG1];
-  ERROR( "Session ", $_[SESSION]->ID, " caught unhandled event $event with (@$args).\n");
+  ERROR( "Session ", $_[SESSION]->ID, " caught unhandled event $event with (".$$args[0].").\n");
 }
 
 =head2 
@@ -295,7 +298,32 @@ our $mainsession = POE::Session->create(
   }
 )->ID;
 
-LiHAS::Firewall::Portal->http_redirector();
+WARN "http_redirector pre";
+my $aliases = POE::Component::Server::HTTP->new(
+  Port => 81,
+  ContentHandler => {
+    '/' => \&handler1,
+  },
+  Headers => { Server => 'Portal Redirection Server' },
+);
+sub handler1 {
+    my ($request, $response) = @_;
+    $response->code(HTTP_TEMPORARY_REDIRECT);
+    my $headers = "";
+    for ($request->header_field_names) { $headers.=$_; }
+    $response->header(
+      Location => "http://portalserver.lan:82/cgi-bin/portal-cgi.pl?redirect_url=".uri_escape($request->header('Server')."/".$request->uri),
+      Gaga => $headers,
+      Expires => "Sat, 01 Jan 2000 00:00:00 GMT",
+      Gaga1 => $request->header('Errnum'),
+      Gaga2 => $request->header('Error'),
+      Gaga3 => $request->header('Operation'),
+      Tralalal => "gaga".$request->header('Host')."X",
+      );
+    return RC_OK;
+}
+#POE::Kernel->call($aliases->{httpd}, "shutdown");
+#POE::Kernel->call($aliases->{tcp}, "shutdown");
 
 DEBUG "kernel-run\n";
 POE::Kernel->run();

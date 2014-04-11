@@ -625,7 +625,7 @@ case "$1" in
   stop)
         [ "$VERBOSE" != no ] && log_daemon_msg "Stopping $DESC" "$NAME"
         do_stop
-	kill -INT $(cat /var/state/firewall-lihasd.pid )
+	kill -INT $(cat /var/run/firewall-lihasd.pid )
 	ps ax | awk '$5 ~ /^\/usr\/bin\/perl$/ && $6 ~ /firewall-lihasd.pl/ {print $1}' | xargs --no-run-if-empty kill
         ;;
   reload|force-reload)
@@ -637,7 +637,7 @@ case "$1" in
         do_start
         iptables-restore < $FILE
 	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
-	kill -INT $(cat /var/state/firewall-lihasd.pid )
+	kill -INT $(cat /var/run/firewall-lihasd.pid )
 	sleep 1
 	firewall-lihasd.pl
         ;;
@@ -650,7 +650,7 @@ case "$1" in
         do_start
         iptables-restore < $FILE
 	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
-	kill -INT $(cat /var/state/firewall-lihasd.pid )
+	kill -INT $(cat /var/run/firewall-lihasd.pid )
 	sleep 1
 	firewall-lihasd.pl
         ;;
