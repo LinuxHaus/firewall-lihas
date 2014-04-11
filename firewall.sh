@@ -50,12 +50,14 @@ if [ -e $CONFIGDIR/config.xml ]; then
 fi
 
 export CONFIGDIR LIBDIR TMPDIR FILE FILEfilter FILEnat FILEmangle TARGETLOG DATABASE DATAPATH
-mkdir -p "$DATAPATH"
-chgrp www-data $DATAPATH
-chmod g+w $DATAPATH
-touch $DATABASE
-chgrp www-data $DATABASE
-chmod g+w $DATABASE
+if getent group www-data >/dev/null 2>&1; then
+  mkdir -p "$DATAPATH"
+  chgrp www-data $DATAPATH
+  chmod g+w $DATAPATH
+  touch $DATABASE
+  chgrp www-data $DATABASE
+  chmod g+w $DATABASE
+fi
 
 # Load the VERBOSE setting and other rcS variables
 . /lib/init/vars.sh
