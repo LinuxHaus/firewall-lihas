@@ -89,4 +89,4 @@ debian-dpkg:
 	dpkg-buildpackage -sa -rfakeroot -tc
 
 debian-upload:
-	curl -u `cat $(HOME)/.debianrepositoryauth` -v $(UPLOADURL) -F B1="Datei hochladen" -F uploaded_file=@/tmp/debian/admin/$(APPNAME)_$(VERSION)-$(VERSION)_$(ARCH).deb
+	curl -u `cat $(HOME)/.debianrepositoryauth` -v $(UPLOADURL) -F B1="Datei hochladen" -F uploaded_file=@../$(APPNAME)_$(VERSION)_$(ARCH).deb

@@ -309,16 +309,9 @@ my $aliases = POE::Component::Server::HTTP->new(
 sub handler1 {
     my ($request, $response) = @_;
     $response->code(HTTP_TEMPORARY_REDIRECT);
-    my $headers = "";
-    for ($request->header_field_names) { $headers.=$_; }
     $response->header(
       Location => "http://portalserver.lan:82/cgi-bin/portal-cgi.pl?redirect_url=".uri_escape($request->header('Server')."/".$request->uri),
-      Gaga => $headers,
       Expires => "Sat, 01 Jan 2000 00:00:00 GMT",
-      Gaga1 => $request->header('Errnum'),
-      Gaga2 => $request->header('Error'),
-      Gaga3 => $request->header('Operation'),
-      Tralalal => "gaga".$request->header('Host')."X",
       );
     return RC_OK;
 }

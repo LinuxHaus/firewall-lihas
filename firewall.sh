@@ -51,6 +51,11 @@ fi
 
 export CONFIGDIR LIBDIR TMPDIR FILE FILEfilter FILEnat FILEmangle TARGETLOG DATABASE DATAPATH
 mkdir -p "$DATAPATH"
+chgrp www-data $DATAPATH
+chmod g+w $DATAPATH
+touch $DATABASE
+chgrp www-data $DATABASE
+chmod g+w $DATABASE
 
 # Load the VERBOSE setting and other rcS variables
 . /lib/init/vars.sh

@@ -125,6 +125,7 @@ if ($accept=~/Anmelden/ ) {
 							-uri=>$cfg->find('feature/portal/page_ok').'?message='.uri_escape("$message"),
 							-expires=>'Sat, 01 Jan 2000 00:00:00 GMT',
 						);
+						$message = "Login successful";
 					} else {
 # Move user to history
 						$sql = "INSERT INTO portal_usershistory (name, pass, start_date, end_date, max_duration, max_clients, start_use) VALUES (?,?,?,?,?,?,?)";
