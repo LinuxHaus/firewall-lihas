@@ -40,9 +40,6 @@
   </policies>
   <dns active="1" refresh_dns_minimum="30" refresh_dns_config="300">
     <host name="lihas.de"/>
-    <host name="fritz3.dyn.lihas.de"/>
-    <host name="fritz4.dyn.lihas.de"/>
-    <host name="fritz5.dyn.lihas.de"/>
   </dns>
   <tests count="2" active="0">
     <!--

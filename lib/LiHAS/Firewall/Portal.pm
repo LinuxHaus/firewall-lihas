@@ -73,7 +73,7 @@ sub portal_ipset_init {
     print IPSET "flush pswap$ipsetname\n";
   }
 # fill ipset
-  $sql = "SELECT DISTINCT portalname,ip,mac,start_date,end_date FROM portal_clients WHERE start_date<? AND end_date>? AND active=0";
+  $sql = "SELECT DISTINCT portalname,ip,mac,start_date,end_date FROM portal_clients WHERE start_date<=? AND end_date>=? AND active=0";
   $sth = $heap->{dbh}->prepare($sql);
   $sth->execute($timestamp, $timestamp);
   $sql = "UPDATE portal_clients SET active=1 WHERE portalname=? AND ip=? AND mac=? AND start_date=? AND end_date=?";
@@ -104,9 +104,9 @@ sub portal_ipset_init {
 		DEBUG "INSERT INTO portal_usershistory (name,pass,start_date,end_date) VALUES ($name,$pass,$start_date,$end_date)";
     $sth1->execute($name,$pass,$start_date,$end_date);
   }
-	$sql = "DELETE FROM portal_users WHERE end_date<?";
+	$sql = "DELETE FROM portal_users WHERE end_date<=?";
   $sth = $heap->{dbh}->prepare($sql);
-	DEBUG "DELETE FROM portal_users WHERE end_date<$timestamp";
+	DEBUG "DELETE FROM portal_users WHERE end_date<=$timestamp";
   $sth->execute($timestamp);
   # save expired client entries to history and delete from active clients
   $sql = "SELECT portalname,ip,mac,start_date,end_date FROM portal_clients WHERE active=0";

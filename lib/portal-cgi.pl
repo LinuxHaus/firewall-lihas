@@ -68,6 +68,7 @@ if (defined $param{'accept'}) {
 } else {
 	$accept="";
 }
+$time = time();
 if ($accept=~/Anmelden/ ) {
 	if (! defined $param{'accept_tos'} || $param{'accept_tos'} !~ /^ja$/) {
 	    $error = "Please accept the Terms of Service";
@@ -81,7 +82,6 @@ if ($accept=~/Anmelden/ ) {
 	  $sth->execute($param{'auth_user'}, $param{'auth_pass'});
 	  $sth->bind_columns(\$name, \$pass, \$start_date, \$end_date, \$max_duration, \$max_clients, \$start_use, \$userrowid);
 	  while ( $sth->fetch ) {
-			$time = time();
 			if ( $max_clients>0 ) {
 				if ( $start_date < $time ) {
 					if ( $end_date > $time ) {
@@ -121,10 +121,10 @@ if ($accept=~/Anmelden/ ) {
 						#print FW '<application name="LiHAS-Firewall"><manage><feature><portal><cmd name="reload">reload</cmd></portal></feature></manage></application>\n';
 						#close(FW);
 						system("echo reload | nc localhost 83 >/dev/null 2>&1");
-						print $cgi->redirect(
-							-uri=>$cfg->find('feature/portal/page_ok').'?message='.uri_escape("$message"),
-							-expires=>'Sat, 01 Jan 2000 00:00:00 GMT',
-						);
+#						print $cgi->redirect(
+#							-uri=>$cfg->find('feature/portal/page/@ok'),
+#							-expires=>'Sat, 01 Jan 2000 00:00:00 GMT',
+#						);
 						$message = "Login successful";
 					} else {
 # Move user to history
@@ -155,7 +155,7 @@ if ($accept=~/Anmelden/ ) {
 
 	  $sql = "INSERT INTO portal_users (name, pass, start_date, end_date, max_duration, max_clients) VALUES (?,?,?,?,?,?)";
 	  $sth1 = $dbh->prepare($sql);
-	  $sth1->execute($param{'auth_user'},$hash,time(),time()+$cfg->find('feature/portal/password/sms/expire'),$cfg->find('feature/portal/session/expire'),$cfg->find('feature/portal/password/sms/clients_max'));
+	  $sth1->execute($param{'auth_user'},$hash,$time,$time+$cfg->find('feature/portal/password/sms/expire'),$cfg->find('feature/portal/session/expire'),$cfg->find('feature/portal/password/sms/clients_max'));
 		print STDERR "wget -O- https://gw.mobilant.net/?key=".$cfg->find('feature/portal/password/sms/mobilant/key')."&to=".$param{'auth_user'}."&message=".uri_escape($cfg->find('feature/portal/password/sms/mobilant/from')." WLAN Key: ".$hash)."&route=lowcostplus&from=".uri_escape($cfg->find('feature/portal/password/sms/mobilant/from'))." |";
 		open(SMS, "wget -O- 'https://gw.mobilant.net/?key=".$cfg->find('feature/portal/password/sms/mobilant/key')."&to=".$param{'auth_user'}."&message=".uri_escape($cfg->find('feature/portal/password/sms/mobilant/from')." WLAN Key: ".$hash)."&route=lowcostplus&from=".uri_escape($cfg->find('feature/portal/password/sms/mobilant/from'))."' |");
 		while (<SMS>) {
@@ -174,7 +174,7 @@ print $cgi->header();
 while (<PAGE>) {
 	s/__ERROR__/$error/;
 	s/__INFO__/$message/;
-	s/__REDIRECTED_URL__/$param{'redirect_url'}/;
+	s/__REDIRECTED_URL__/$redirect_url/;
 	print $_;
 }
 close(PAGE);

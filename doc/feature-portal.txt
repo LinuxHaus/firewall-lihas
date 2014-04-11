@@ -3,7 +3,6 @@ Captive Portal support for portal named $portalname:
   in $CONFIGDIR/feature/portal/$portalname/interfaces.
   There is only one supported portal per interface.
 - $CONFIGDIR/feature/portal/$portalname/ipset-name
-- $CONFIGDIR/feature/portal/$portalname/dbsetup
 - $CONFIGDIR/feature/portal/$portalname/dnat: unknown clients are
   handled here, e.g. redirect to portal website
 - $CONFIGDIR/feature/portal/$portalname/privclients: unknown clients may
@@ -11,10 +10,14 @@ Captive Portal support for portal named $portalname:
 - $CONFIGDIR/feature/portal/$portalname/clients-static: static mac/IP
   combinations Format:
   IP MAC Comment
+  make sure the ip/mac combination stays the same, e.g. via static
+  ips/dhcp-server configuration
 
 Restrictions:
 - maximum name length for portal: 21 characters
 - no dns-targets in portal dnat and privclients
+- static clients load only on firewall-lihasd.pl startup and you need to
+  run "echo gnarf | nc localhost 83" to activate
 
 Sample:
 Create a portal 'testportal' using ipset 'testportal', ip-range of
@@ -31,8 +34,30 @@ echo "0.0.0.0/0 192.168.15.1 tcp 80 81" > /etc/firewall.lihas.d/feature/portal/t
 echo 192.168.15.1 portalserver.lan >> /etc/hosts
 mkdir -p /var/www/portalserver.lan
 
+
+cat <<EOF >/etc/apache2/sites-available/001-portalserver.lan.conf 
+<VirtualHost *:80>
+        ServerName portalserver.lan
+        ServerAdmin webmaster@localhost
+        DocumentRoot /var/www/portalserver.lan
+        ErrorLog ${APACHE_LOG_DIR}/portalserver.lan-error.log
+        CustomLog ${APACHE_LOG_DIR}/portalserver.lan-access.log combined
+
+        # enable CGI
+        Include conf-available/serve-cgi-bin.conf
+</VirtualHost>
+<VirtualHost *:82>
+        ServerName portalserver.lan
+        ServerAdmin webmaster@localhost
+        DocumentRoot /var/www/portalserver.lan
+        ErrorLog ${APACHE_LOG_DIR}/portalserver.lan-error.log
+        CustomLog ${APACHE_LOG_DIR}/portalserver.lan-access.log combined
+
+        # enable CGI
+        Include conf-available/serve-cgi-bin.conf
+</VirtualHost>
+EOF
 a2ensite 001-portalserver.lan.conf
-https://fw02.ukbw.de:8001/
 
 # www-data / webserver needs access
 chgrp www-data /var/lib/firewall-lihas/db.sqlite
