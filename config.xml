@@ -25,6 +25,7 @@
       <password><sms><clients_max>3<!-- 3 concurrent clients --></clients_max></sms></password>
       <password><sms><mobilant><key>KEY<!-- SMS via http://www.mobilant.de/ --></key></mobilant></sms></password>
       <password><sms><mobilant><from>WLAN-AP<!-- SMS via http://www.mobilant.de/ --></from></mobilant></sms></password>
+      <password><sms><mobilant><message>Bitte loggen Sie sich mit dem Nutzer __USER__ und dem Passwort __PASS__ ein.</from></mobilant></sms></message>
       <page login="/usr/lib/firewall/lihas/templates/template.html" ok="/usr/lib/firewall/lihas/templates/template.html" error="/usr/lib/firewall/lihas/templates/template.html"/>
     </portal><!-- make sure you have ipset support -->
   </feature>
