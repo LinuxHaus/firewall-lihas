@@ -18,31 +18,37 @@
     </create>
   </database>
   <feature>
-    <portal enabled="1">
+    <portal enabled="0">
       <name>testportal</name>
       <session><expire>43200<!-- 12 hours = 60*60*12s --></expire></session>
-      <password><sms><expire>259200<!-- 3 days = 60*60*24*3s --></expire></sms></password>
-      <password><sms><clients_max>3<!-- 3 concurrent clients --></clients_max></sms></password>
-      <password><sms><mobilant><key>KEY<!-- SMS via http://www.mobilant.de/ --></key></mobilant></sms></password>
-      <password><sms><mobilant><from>WLAN-AP<!-- SMS via http://www.mobilant.de/ --></from></mobilant></sms></password>
-      <password><sms><mobilant><message>Bitte loggen Sie sich mit dem Nutzer __USER__ und dem Passwort __PASS__ ein.</from></mobilant></sms></message>
+      <password><sms>
+        <expire>259200<!-- 3 days = 60*60*24*3s --></expire>
+        <clients_max>3<!-- 3 concurrent clients --></clients_max>
+        <mobilant>
+          <key>KEY<!-- SMS via http://www.mobilant.de/ --></key>
+          <from>WLAN-AP<!-- SMS via http://www.mobilant.de/ --></from>
+          <message>Bitte loggen Sie sich mit dem Nutzer __USER__ und dem Passwort __PASS__ ein.</message>
+        </mobilant>
+      </sms></password>
       <page login="/usr/lib/firewall/lihas/templates/template.html" ok="/usr/lib/firewall/lihas/templates/template.html" error="/usr/lib/firewall/lihas/templates/template.html"/>
     </portal><!-- make sure you have ipset support -->
   </feature>
-  <policies count="1">
+  <policies count="0">
+    <!--
     <policy
       name="dsl"               cmt0="name der policy"
       interface="eth1"             cmt1="interface der bevorzugten defaultroute fuer diese policy"
     >
       <interface gwmethod="fixed" name="eth1" gwaddr="192.168.253.6" priority="0" />
-      <!-- gwmethod: Defaultroute: fixed = feste ip, ppp = ppp-peer, dhcp = gw dynamisch aus dhcp, braucht isc-dhcp-client und /etc/dhcp/dhclient-enter-hooks.d/firewall-lihas -->
+      --><!-- gwmethod: Defaultroute: fixed = feste ip, ppp = ppp-peer, dhcp = gw dynamisch aus dhcp, braucht isc-dhcp-client und /etc/dhcp/dhclient-enter-hooks.d/firewall-lihas --><!--
       <interface gwmethod="fixed" name="eth1" gwaddr="192.168.253.7" priority="1" />
     </policy>
+    -->
   </policies>
   <dns active="1" refresh_dns_minimum="30" refresh_dns_config="300">
     <host name="lihas.de"/>
   </dns>
-  <tests count="2" active="0">
+  <tests count="0" active="0">
     <!--
     <test
       name=""                   cmt0="name des tests"
@@ -57,7 +63,6 @@
       latency_interval=""       cmt9="anzahl messwerte, ueber die der durchschnitt gebildet wird"
       active=""                 cmt10="1: tests werden gemacht, 0: keine tests"
     />
-    -->
     <test
       name="ping_192_168_253_6" cmt0="name des tests"
       host="192.168.253.6"      cmt1="hostname oder ip des zu pruefenden systems"
@@ -82,6 +87,7 @@
       latency_avg="10"          cmt8="durchschnittliche latenz in sekunden"
       latency_interval="10"     cmt9="anzahl messwerte, ueber die der durchschnitt gebildet wird"
     />
+    -->
     <!-- ggf. weitere tests -->
   </tests>
 </application>
