@@ -156,7 +156,7 @@ if ($accept=~/Anmelden/ ) {
 	  $sql = "INSERT INTO portal_users (name, pass, start_date, end_date, max_duration, max_clients) VALUES (?,?,?,?,?,?)";
 	  $sth1 = $dbh->prepare($sql);
 	  $sth1->execute($param{'auth_user'},$hash,$time,$time+$cfg->find('feature/portal/password/sms/expire'),$cfg->find('feature/portal/session/expire'),$cfg->find('feature/portal/password/sms/clients_max'));
-		my $smsmessage = $cfg->find('feature/portal/password/sms/mobilant/message')
+		my $smsmessage = $cfg->find('feature/portal/password/sms/mobilant/message');
 		$smsmessage =~ s/__USER__/$param{'auth_user'}/;
 		$smsmessage =~ s/__PASS__/$hash/;
 		print STDERR "wget -O- https://gw.mobilant.net/?key=".$cfg->find('feature/portal/password/sms/mobilant/key')."&to=".$param{'auth_user'}."&message=".uri_escape($smsmessage)."&route=lowcostplus&from=".uri_escape($cfg->find('feature/portal/password/sms/mobilant/from'))." |";
