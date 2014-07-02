@@ -70,7 +70,7 @@
     NET     eth6    10.4.2.1
     -> 10.4.2.1 ueber eth6 wird das Defaultgateway
   - policy-routing-TABELLENNAME/key
-    Zahl die mit fwmark gesetzt wird, sollte eindeutig sein pro System
+    Zahl die mit fwmark gesetzt wird, sollte eindeutig sein pro System, HEX, bsp 0x54
 
 - Verzeichnis groups
   - Datei hostgroup-GROUPNAME

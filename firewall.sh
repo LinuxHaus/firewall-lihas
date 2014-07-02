@@ -477,7 +477,7 @@ for policy in policy-routing-*; do
         while ip rule | egrep -qw "fwmark $key lookup $policy"; do
           ip rule del fwmark $key table $policy
         done
-        ip rule add fwmark $key table $policy
+        ip rule add fwmark $key pref 9000 table $policy
         ip route flush cache
       done
     fi
