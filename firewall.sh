@@ -244,7 +244,7 @@ lihas_ipt_nonat () {
   dport=$5
   if [ $snet == "include" ]; then
     if [ -e $snet ]; then
-      cat $mnet | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+      cat $mnet | /home/are/src/firewall-lihas/bin/firewall-lihas.pl -H -P | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
       while read snet dnet proto dport; do
         lihas_ipt_nonat "$outfile" "$snet" "$dnet" "$proto" "$dport"
       done
@@ -264,7 +264,7 @@ for iface in interface-*; do
   iface=${iface#interface-}
   if [ -e interface-$iface/nonat ]; then
     [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
-    cat interface-$iface/nonat | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+    cat interface-$iface/nonat | /home/are/src/firewall-lihas/bin/firewall-lihas.pl -H -P | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read snet dnet proto dport; do
       lihas_ipt_nonat "$FILEnat" "$snet" "$dnet" "$proto" "$dport"
     done
@@ -277,7 +277,7 @@ for iface in interface-*; do
   chain="pre-$iface"
   if [ -e interface-$iface/dnat ]; then
     [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
-    cat interface-$iface/dnat | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+    cat interface-$iface/dnat | /home/are/src/firewall-lihas/bin/firewall-lihas.pl -H -P | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read dnet mnet proto dport ndport; do
       lihas_ipt_dnat "$chain" "$dnet" "$mnet" "$proto" "$dport" "$ndport"
     done
@@ -293,7 +293,7 @@ lihas_ipt_snat () {
   dport=$5
   if [ $dnet == "include" ]; then
     if [ -e $mnet ]; then
-      cat $mnet | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+      cat $mnet | /home/are/src/firewall-lihas/bin/firewall-lihas.pl -H -P | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
       while read snet mnet proto dport; do
         lihas_ipt_snat "$outfile" "$snet" "$mnet" "$proto" "$dport"
       done
@@ -329,7 +329,7 @@ for iface in interface-*; do
   iface=${iface#interface-}
   if [ -e interface-$iface/snat ]; then
     [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
-    cat interface-$iface/snat | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+    cat interface-$iface/snat | /home/are/src/firewall-lihas/bin/firewall-lihas.pl -H -P | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read snet mnet proto dport; do
         lihas_ipt_snat "$FILEnat" "$snet" "$mnet" "$proto" "$dport"
     done
@@ -345,7 +345,7 @@ lihas_ipt_masquerade () {
   dport=$5
   if [ $snet == "include" ]; then
     if [ -e $mnet ]; then
-      cat $mnet | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+      cat $mnet | /home/are/src/firewall-lihas/bin/firewall-lihas.pl -H -P | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
       while read snet mnet proto dport; do
         lihas_ipt_masquerade "$outfile" "$snet" "$mnet" "$proto" "$dport"
       done
@@ -369,7 +369,7 @@ for iface in interface-*; do
   iface=${iface#interface-}
   if [ -e interface-$iface/masquerade ]; then
     [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
-    cat interface-$iface/masquerade | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+    cat interface-$iface/masquerade | /home/are/src/firewall-lihas/bin/firewall-lihas.pl -H -P | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read snet mnet proto dport; do
       lihas_ipt_masquerade "$FILEnat" "$snet" "$mnet" "$proto" "$dport"
     done
@@ -381,7 +381,7 @@ for iface in interface-*; do
   iface=${iface#interface-}
   if [ -e interface-$iface/reject ]; then
     [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
-    cat interface-$iface/reject | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+    cat interface-$iface/reject | /home/are/src/firewall-lihas/bin/firewall-lihas.pl -H -P | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read snet dnet proto dport oiface; do
       lihas_ipt_rejectclients "$snet" "$dnet" "$proto" "$dport" "$oiface"
     done
@@ -397,7 +397,7 @@ lihas_ipt_privclients () {
   oiface=$5
   if [ "$snet" == "include" ]; then
     if [ -e "$dnet" ]; then
-      cat $dnet | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+      cat $dnet | /home/are/src/firewall-lihas/bin/firewall-lihas.pl -H -P | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
       while read snet dnet proto dport oiface; do
         lihas_ipt_privclients "$snet" "$dnet" "$proto" "$dport" "$oiface"
       done
@@ -436,7 +436,7 @@ for iface in interface-*; do
   iface=${iface#interface-}
   if [ -e interface-$iface/privclients ]; then
     [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
-    cat interface-$iface/privclients | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+    cat interface-$iface/privclients | /home/are/src/firewall-lihas/bin/firewall-lihas.pl -H -P | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read snet dnet proto dport oiface; do
       lihas_ipt_privclients "$snet" "$dnet" "$proto" "$dport" "$oiface"
     done
@@ -456,7 +456,7 @@ for policy in policy-routing-*; do
     [ -e policy-routing-$policy/comment ] && cat policy-routing-$policy/comment | sed 's/^/ /'
     key=$(cat policy-routing-$policy/key)
     if [ -e policy-routing-$policy/gateway ]; then
-      cat policy-routing-$policy/gateway | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+      cat policy-routing-$policy/gateway | /home/are/src/firewall-lihas/bin/firewall-lihas.pl -H -P | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
       while read type interface gateway; do
         ip route flush table $policy
         if [ $type == "PPP" ]; then
@@ -487,7 +487,7 @@ for iface in interface-*; do
   iface=${iface#interface-}
   if [ -e interface-$iface/policy-routing ]; then
     [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
-    cat interface-$iface/policy-routing | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+    cat interface-$iface/policy-routing | /home/are/src/firewall-lihas/bin/firewall-lihas.pl -H -P | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read snet dnet proto dport policy; do
       mark=$(cat policy-routing-$policy/key)
       if [ $dport == "0" ]; then
@@ -516,7 +516,7 @@ lihas_ipt_nolog () {
   oiface=$5
   if [ "$snet" == "include" ]; then
     if [ -e "$dnet" ]; then
-      cat $dnet | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+      cat $dnet | /home/are/src/firewall-lihas/bin/firewall-lihas.pl -H -P | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
       while read snet dnet proto dport oiface; do
         lihas_ipt_nolog "$snet" "$dnet" "$proto" "$dport" "$oiface"
       done
@@ -555,7 +555,7 @@ for iface in interface-*; do
   iface=${iface#interface-}
   if [ -e interface-$iface/nolog ]; then
     [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
-    cat interface-$iface/nolog | helper_hostgroup | helper_portgroup | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+    cat interface-$iface/nolog | /home/are/src/firewall-lihas/bin/firewall-lihas.pl -H -P | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read snet dnet proto dport oiface; do
       lihas_ipt_nolog "$snet" "$dnet" "$proto" "$dport" "$oiface"
     done
