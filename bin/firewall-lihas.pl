@@ -24,9 +24,10 @@ if (! Log::Log4perl::initialized()) { WARN "uninit"; } else { }
 
 my $expand_hostgroups=0;
 my $expand_portgroups=0;
+my $do_shaping=0;
 use Getopt::Mixed;
 my ($option, $value);
-Getopt::Mixed::init("H P d expand-hostgroup>H expand-portgroup>P debug>d");
+Getopt::Mixed::init("H P s d expand-hostgroup>H expand-portgroup>P shaping>s debug>d");
 while (($option, $value) = Getopt::Mixed::nextOption()) {
 	if ($option=~/^H$/) {
 		$expand_hostgroups=1;
@@ -34,6 +35,8 @@ while (($option, $value) = Getopt::Mixed::nextOption()) {
 		$DEBUG=1;
 	} elsif ($option=~/^P$/) {
 		$expand_portgroups=1;
+	} elsif ($option=~/^s$/) {
+		$do_shaping=1;
 	}
 }
 Getopt::Mixed::cleanup();
@@ -54,7 +57,6 @@ $SIG{__WARN__} = sub {
 };
 
 use XML::Application::Config;
-use POE qw(Component::Client::Ping Component::Client::DNS );
 # use Test::More skip_all => "Derzeit keine Tests";
 use lib "/etc/firewall.lihas.d/lib";
 
@@ -204,6 +206,13 @@ sub expand_portgroup {
 	} else {
 	}
 	return $resultline;
+}
+
+=head2 do_shaping
+=cut
+
+sub do_shaping {
+	
 }
 
 =head2 main stuff
