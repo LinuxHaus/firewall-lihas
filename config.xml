@@ -32,6 +32,9 @@
       </sms></password>
       <page login="/usr/lib/firewall/lihas/templates/template.html" ok="/usr/lib/firewall/lihas/templates/template.html" error="/usr/lib/firewall/lihas/templates/template.html"/>
     </portal><!-- make sure you have ipset support -->
+    <ipsec>
+      <secretsfile>/var/lib/firewall-lihas/ipsec.secrets</secretsfile>
+    </ipsec>
   </feature>
   <policies count="0">
     <!--
