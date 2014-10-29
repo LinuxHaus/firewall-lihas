@@ -51,42 +51,49 @@ use HTTP::Status qw(:constants);
 use LiHAS::Firewall::Ping;
 use LiHAS::Firewall::DNS;
 use URI::Escape qw(uri_escape);
-eval { use LiHAS::Firewall::Portal }; WARN "No portal support: $@" if $@;
+my %feature;
 use DBI;
 
 my $cfg = new XML::Application::Config("LiHAS-Firewall","/etc/firewall.lihas.d/config.xml");
 
+if ($cfg->find('feature/connectivity/@enabled'!=0) {
+	eval { require LiHAS::Firewall::Connectivity }; if ($@) { WARN "No connectivity test support: $@"; $feature{'connectivity'}=0; } else { $feature{'connectivity'}=1; }
+} else { $feature{'connectivity'}=0; }
+if ($cfg->find('feature/portal/@enabled'!=0) {
+	eval { require LiHAS::Firewall::Portal }; if ($@) { WARN "No portal support: $@"; $feature{'portal'}=0; } else { $feature{'portal'}=1; }
+} else { $feature{'portal'}=0; }
+
 =head1 Functions
 
-=head2 firewall_reload_ipsec
-
-Reloads the ipsec.secrets with current IPs from database
-=cut
-sub firewall_reload_ipsec {
-  my ($kernel, $session, $heap) = @_[KERNEL, SESSION, HEAP];
-	my $ipsecsecretssource;
-	if ( -r $heap->{configpath}."/feature/ipsec/ipsec.secrets.dns"; ) {
-		if ( ! open($ipsecsecretssource, $heap->{configpath}."/feature/ipsec/ipsec.secrets.dns")) {
-			$logger->fatal("cannot open < ".$heap->{configpath}."/feature/ipsec/ipsec.secrets.dns: $!");
-		} else {
-			if ( ! open() ) {
-			} else {
-				if ( ! open($ipsecsecretsdest, $cfg->find('/applicationconfig/application/feature/ipsec/secretsfile')) {
-					$logger->fatal("cannot open > ".$cfg->find('/applicationconfig/application/feature/ipsec/secretsfile').": $!");
-				} else {
-					foreach my $line (<$ipsecsecretssource>) {
-						chop $line;
-						$line =~ m/^#/ && next;
-						$line =~ m/^[ \t]*$/ && next;
-						if ( $line =~ m/^([\S]*)[\s]+([\S]*)[\s]+:[\s]+PSK[\s]+([\S]*)(.*)$/ ) {
-						}
-					}
-				}
-			}
-			close($ipsecsecretssource);
-		}
-	}
-}
+#=head2 firewall_reload_ipsec
+#
+#Reloads the ipsec.secrets with current IPs from database
+#=cut
+#sub firewall_reload_ipsec {
+#  my ($kernel, $session, $heap) = @_[KERNEL, SESSION, HEAP];
+#	my $ipsecsecretssource;
+#	if ( -r $heap->{configpath}."/feature/ipsec/ipsec.secrets.dns"; ) {
+#		if ( ! open($ipsecsecretssource, $heap->{configpath}."/feature/ipsec/ipsec.secrets.dns")) {
+#			$logger->fatal("cannot open < ".$heap->{configpath}."/feature/ipsec/ipsec.secrets.dns: $!");
+#		} else {
+#			if ( ! open() ) {
+#			} else {
+#				if ( ! open($ipsecsecretsdest, $cfg->find('/applicationconfig/application/feature/ipsec/secretsfile')) {
+#					$logger->fatal("cannot open > ".$cfg->find('/applicationconfig/application/feature/ipsec/secretsfile').": $!");
+#				} else {
+#					foreach my $line (<$ipsecsecretssource>) {
+#						chop $line;
+#						$line =~ m/^#/ && next;
+#						$line =~ m/^[ \t]*$/ && next;
+#						if ( $line =~ m/^([\S]*)[\s]+([\S]*)[\s]+:[\s]+PSK[\s]+([\S]*)(.*)$/ ) {
+#						}
+#					}
+#				}
+#			}
+#			close($ipsecsecretssource);
+#		}
+#	}
+#}
 
 =head2 firewall_reload_dns
 
@@ -164,8 +171,8 @@ sub firewall_find_dnsnames {
   opendir(my $dh, $cfg->find('config/@path')."/groups") || die "can't opendir ".$cfg->find('config/@path')."/groups: $!\n";
   my @files = grep { /^hostgroup-/ && -f $cfg->find('config/@path')."/groups/$_" } readdir($dh);
   closedir $dh;
-	if ( -r $heap->{datapath}/hostgroup-feature-ipsec ) {
-		push(@files, $heap->{datapath}/hostgroup-feature-ipsec);
+	if ( -r $heap->{datapath}."/hostgroup-feature-ipsec" ) {
+		push(@files, $heap->{datapath}."/hostgroup-feature-ipsec");
 	}
   foreach my $file (@files) {
     open($fh, "<", $cfg->find('config/@path')."/groups/$file") or die "cannot open < ".$cfg->find('config/@path')."/groups/$file: $!";

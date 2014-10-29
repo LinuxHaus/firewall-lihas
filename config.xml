@@ -18,6 +18,9 @@
     </create>
   </database>
   <feature>
+    <connectivity enabled="0">
+      <test target="line1.example.org" rt_table="line1" />
+    </connectivity>
     <portal enabled="0">
       <name>testportal</name>
       <session><expire>43200<!-- 12 hours = 60*60*12s --></expire></session>
