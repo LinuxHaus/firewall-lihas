@@ -1,14 +1,14 @@
 APPNAME=$(shell basename `pwd`)
-VERSION=$(shell git describe)
+VERSION=$(shell git describe | sed 's/-/./g')
 
 UPLOADURL=http://ftp.lihas.de/cgi-bin/newpackage
 DEBIAN_FULL_NAME=Adrian Reyer
 DEBIAN_EMAIL=are@lihas.de
 DEBIAN_HOMEPAGE=https://github.com/LinuxHaus/firewall-lihas/
 DESC_SHORT=LiHAS firewall with additional features: dns-support, portal-support
-DESC_LONG=LiHAS firewall with additional features:\n policy-routing\n dns-support\n captive portal with sms service integration
-DEBIAN_DEPENDS=bash,sed,iptables
-DEBIAN_RECOMMENDS=liblog-log4perl-perl,liblog-dispatch-perl,libpoe-component-client-dns-perl,libpoe-component-client-ping-perl,libpoe-perl,libdbi-perl,libdbd-sqlite3-perl,libnet-server-perl,libxml-application-config-perl,libxml-xpath-perl,xmlstarlet,ipset,net-tools,libpoe-component-server-http-perl,libhttp-message-perl,libgetopt-mixed-perl
+DESC_LONG=LiHAS firewall with additional features:\n policy-routing\n dns-support\n captive portal with sms service integration\n traffic shaping
+DEBIAN_DEPENDS=bash,sed,iptables,perl,liblog-log4perl-perl,libgetopt-mixed-perl,libxml-application-config-perl
+DEBIAN_RECOMMENDS=liblog-dispatch-perl,libpoe-component-client-dns-perl,libpoe-component-client-ping-perl,libpoe-perl,libdbi-perl,libdbd-sqlite3-perl,libnet-server-perl,libxml-xpath-perl,xmlstarlet,ipset,net-tools,libpoe-component-server-http-perl,libhttp-message-perl
 ARCH=all
 
 CFGDIR=$(DESTDIR)/etc/$(APPNAME)
@@ -49,6 +49,7 @@ install:
 	install -m 0755 -d $(CFGDDIR)/groups $(CFGDDIR)/include $(CFGDDIR)/feature/portal
 	install -m 0600 config.xml $(CFGDDIR)
 	install -m 0600 log4perl.conf $(CFGDDIR)
+	install -m 0755 bin/firewall-lihas.pl $(USBINDIR)/
 	install -m 0755 bin/firewall-lihasd.pl $(USBINDIR)/
 	chmod 0755 $(USBINDIR)/firewall-lihasd.pl
 	install -m 0755 bin/firewall-lihas-watchdog-cron.sh $(UBINDIR)/
