@@ -1,5 +1,5 @@
 APPNAME=$(shell basename `pwd`)
-VERSION=$(shell git describe)
+VERSION=$(shell git describe | sed 's/-/./g')
 
 UPLOADURL=http://ftp.lihas.de/cgi-bin/newpackage
 DEBIAN_FULL_NAME=Adrian Reyer
