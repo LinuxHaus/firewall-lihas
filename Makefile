@@ -49,6 +49,7 @@ install:
 	install -m 0755 -d $(CFGDDIR)/groups $(CFGDDIR)/include $(CFGDDIR)/feature/portal
 	install -m 0600 config.xml $(CFGDDIR)
 	install -m 0600 log4perl.conf $(CFGDDIR)
+	install -m 0755 bin/firewall-lihas.pl $(USBINDIR)/
 	install -m 0755 bin/firewall-lihasd.pl $(USBINDIR)/
 	chmod 0755 $(USBINDIR)/firewall-lihasd.pl
 	install -m 0755 bin/firewall-lihas-watchdog-cron.sh $(UBINDIR)/

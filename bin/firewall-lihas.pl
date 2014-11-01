@@ -90,12 +90,12 @@ sub parse_hostgroup {
 					parse_hostgroup({path=>$path, name=>$1});
 				} else {
 				}
-				foreach (values(@{$hostgroup{$1}{hosts}})) {
-					push(@{$hostgroup{$name}}{hosts}, $_);
+				foreach my $host (values(@{$hostgroup{$1}{hosts}})) {
+					push(@{$hostgroup{$name}{hosts}}, $host);
 				}
 			} elsif ( $line =~ m/^([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(|\/[0-9]+)|dns-[a-zA-Z0-9-\.]+)/){
 				my $host = $1;
-				push(@{$hostgroup{$name}}{hosts}, $host);
+				push(@{$hostgroup{$name}{hosts}}, $host);
 			}
 		}
 		close($fh);
@@ -118,7 +118,7 @@ sub expand_hostgroup {
 			WARN "Hostgroup $name undefined, '$line' dropped\n";
 			$line = "";
 		} else {
-			foreach my $replacement (values(${$hostgroup{$name}}{hosts})) {
+			foreach my $replacement (values(@{${$hostgroup{$name}}{hosts}})) {
 				$replaceline = $line;
 				$replaceline =~ s/hostgroup-$name\b/$replacement/;
 				$resultline .= expand_hostgroup($replaceline);
