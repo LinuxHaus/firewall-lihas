@@ -24,10 +24,12 @@ if (! Log::Log4perl::initialized()) { WARN "uninit"; } else { }
 
 my $expand_hostgroups=0;
 my $expand_portgroups=0;
+my $fw_privclients=0;
 my $do_shaping=0;
+my $CONNSTATE="-m conntrack --ctstate";
 use Getopt::Mixed;
 my ($option, $value);
-Getopt::Mixed::init("H P s d expand-hostgroup>H expand-portgroup>P shaping>s debug>d");
+Getopt::Mixed::init("H P s d f c=s conntrack>c firewall>f expand-hostgroup>H expand-portgroup>P shaping>s debug>d");
 while (($option, $value) = Getopt::Mixed::nextOption()) {
 	if ($option=~/^H$/) {
 		$expand_hostgroups=1;
@@ -35,7 +37,11 @@ while (($option, $value) = Getopt::Mixed::nextOption()) {
 		$DEBUG=1;
 	} elsif ($option=~/^P$/) {
 		$expand_portgroups=1;
+	} elsif ($option=~/^f$/) {
+		$fw_privclients=1;
 	} elsif ($option=~/^s$/) {
+		$do_shaping=1;
+	} elsif ($option=~/^c$/) {
 		$do_shaping=1;
 	}
 }
@@ -204,8 +210,45 @@ sub expand_portgroup {
 			}
 		}
 	} else {
+		$resultline = $line;
 	}
 	return $resultline;
+}
+
+=head2 fw_privclients
+=cut
+
+sub fw_privclients {
+	my $iface = $_[0];
+	my $file = $_[1];
+	open(my $privclients, "<", $file) or die "cannot open < $file: $!";
+	foreach my $line (<$privclients>) {
+		$line =~ m/^#/ && next;
+		$line =~ m/^[ \t]*$/ && next;
+		if ($line =~ /^include[\s]+([^\s]+)/) {
+			fw_privclients($iface, $cfg->find('config/@path')."/$1");
+		}
+		foreach my $line1 (split(/\n/,expand_hostgroup($line))) {
+			foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
+				my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line2);
+				my $outline = "$CONNSTATE NEW -s $snet -d $dnet -p $proto";
+				if ( $dport != "0" ) {
+					if ( $proto =~ /^icmp$/ ) {
+						$outline .= " --icmp-type $dport";
+					} else {
+						$outline .= " --dport $dport";
+					}
+				}
+				if ( $oiface !~ /^$/ ) {
+					print "-A fwd-$iface $outline -o $oiface -j ACCEPT\n";
+				} else {
+					print "-A fwd-$iface $outline -j ACCEPT\n";
+				}
+				print "-A in-$iface $outline -j ACCEPT\n";
+			}
+		}
+	}
+	close $privclients;
 }
 
 =head2 do_shaping
@@ -218,7 +261,7 @@ sub do_shaping {
 =head2 main stuff
 =cut
 
-if ($expand_hostgroups) {
+if ($expand_hostgroups || $fw_privclients) {
   opendir(my $dh, $cfg->find('config/@path')."/groups") || die "can't opendir ".$cfg->find('config/@path')."/groups: $!\n";
   my @files = grep { /^hostgroup-/ && -f $cfg->find('config/@path')."/groups/$_" } readdir($dh);
   closedir $dh;
@@ -229,7 +272,7 @@ if ($expand_hostgroups) {
 		parse_hostgroup({path=>$path, name=>$name});
   }
 }
-if ($expand_portgroups) {
+if ($expand_portgroups || $fw_privclients) {
   opendir(my $dh, $cfg->find('config/@path')."/groups") || die "can't opendir ".$cfg->find('config/@path')."/groups: $!\n";
   my @files = grep { /^portgroup-/ && -f $cfg->find('config/@path')."/groups/$_" } readdir($dh);
   closedir $dh;
@@ -241,7 +284,17 @@ if ($expand_portgroups) {
   }
 }
 
-if ($expand_hostgroups) {
+if ($fw_privclients) {
+  opendir(my $dh, $cfg->find('config/@path')) || die "can't opendir ".$cfg->find('config/@path').": $!\n";
+  my @interfaces = grep { /^interface-/ && -d $cfg->find('config/@path')."/$_/" } readdir($dh);
+	foreach my $interfacedir (@interfaces) {
+		-s $cfg->find('config/@path')."/$interfacedir/privclients" || next;
+		my $iface = $interfacedir;
+		$iface =~ s/^interface-//;
+		fw_privclients($iface, $cfg->find('config/@path')."/$interfacedir/privclients");
+	}
+	closedir $dh;
+} elsif ($expand_hostgroups) {
 	foreach my $line (<>) {
 		$line =~ m/^#/ && next;
 		$line =~ m/^[ \t]*$/ && next;
@@ -254,7 +307,7 @@ if ($expand_hostgroups) {
 			print expand_hostgroup($line);
 		}
 	}
-} elsif ($expand_hostgroups) {
+} elsif ($expand_portgroups) {
 	foreach my $line (<>) {
 		$line =~ m/^#/ && next;
 		$line =~ m/^[ \t]*$/ && next;

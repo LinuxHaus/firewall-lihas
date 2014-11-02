@@ -55,11 +55,11 @@ my %feature;
 use DBI;
 
 my $cfg = new XML::Application::Config("LiHAS-Firewall","/etc/firewall.lihas.d/config.xml");
-
-if ($cfg->find('feature/connectivity/@enabled'!=0) {
+if (defined $cfg->find('feature/connectivity/@enabled') && ( $cfg->find('feature/connectivity/@enabled') !~ /^(|0)$/)) {
 	eval { require LiHAS::Firewall::Connectivity }; if ($@) { WARN "No connectivity test support: $@"; $feature{'connectivity'}=0; } else { $feature{'connectivity'}=1; }
 } else { $feature{'connectivity'}=0; }
-if ($cfg->find('feature/portal/@enabled'!=0) {
+
+if ($cfg->find('feature/portal/@enabled') !~ /^(|0)$/ ) {
 	eval { require LiHAS::Firewall::Portal }; if ($@) { WARN "No portal support: $@"; $feature{'portal'}=0; } else { $feature{'portal'}=1; }
 } else { $feature{'portal'}=0; }
 
@@ -281,8 +281,10 @@ sub session_start {
   $heap->{feature_portal} = $cfg->find('feature/portal/@enabled');
   $kernel->yield('timer_ping');
   $kernel->yield('firewall_find_dnsnames');
-  $kernel->yield('portal_init');
-  $kernel->yield('portal_ipset_init');
+  if ($feature{'portal'}!=0) {
+		$kernel->yield('portal_init');
+		$kernel->yield('portal_ipset_init');
+	}
   $kernel->yield('dns_update');
   $kernel->yield('firewall_reload_dns');
   manage_server();
