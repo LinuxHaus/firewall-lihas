@@ -99,7 +99,7 @@ sub parse_hostgroup {
 				foreach my $host (values(@{$hostgroup{$1}{hosts}})) {
 					push(@{$hostgroup{$name}{hosts}}, $host);
 				}
-			} elsif ( $line =~ m/^([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(|\/[0-9]+)|dns-[a-zA-Z0-9-\.]+)/){
+			} elsif ( $line =~ m/^([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(|\/[0-9]+)|dns-[a-zA-Z0-9-\.]+)(\s.*|)$/){
 				my $host = $1;
 				push(@{$hostgroup{$name}{hosts}}, $host);
 			}
@@ -164,7 +164,7 @@ sub parse_portgroup {
 					  push(@{$portgroup{$name}{proto}{$proto}{ports}}, $port);
 					}
 				}
-			} elsif ( $line =~ m/^([a-zA-Z0-9]+)[ \t]+([0-9]+)/){
+			} elsif ( $line =~ m/^([a-zA-Z0-9]+)[ \t]+([0-9:]+)/){
 				my $proto = $1;
 				my $port = $2;
 				push(@{$portgroup{$name}{proto}{$proto}{ports}}, $port);
