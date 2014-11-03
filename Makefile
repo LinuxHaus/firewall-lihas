@@ -7,7 +7,7 @@ DEBIAN_EMAIL=are@lihas.de
 DEBIAN_HOMEPAGE=https://github.com/LinuxHaus/firewall-lihas/
 DESC_SHORT=LiHAS firewall with additional features: dns-support, portal-support
 DESC_LONG=LiHAS firewall with additional features:\n policy-routing\n dns-support\n captive portal with sms service integration\n traffic shaping
-DEBIAN_DEPENDS=bash,sed,iptables,perl,liblog-log4perl-perl,libgetopt-mixed-perl,libxml-application-config-perl,libxml-xpath-perl
+DEBIAN_DEPENDS=iptables,perl,liblog-log4perl-perl,libgetopt-mixed-perl,libxml-application-config-perl,libxml-xpath-perl
 DEBIAN_RECOMMENDS=liblog-dispatch-perl,libpoe-component-client-dns-perl,libpoe-component-client-ping-perl,libpoe-perl,libdbi-perl,libdbd-sqlite3-perl,libnet-server-perl,xmlstarlet,ipset,net-tools,libpoe-component-server-http-perl,libhttp-message-perl
 ARCH=all
 
@@ -62,7 +62,7 @@ install:
 	install -m 0644 doc/* $(USDOCDIR)
 	install -m 0755 localhost $(CFGDDIR)/
 	install -m 0755 firewall.sh $(UBINDIR)/; cd $(CFGDDIR) && ln -s /usr/bin/firewall.sh firewall.sh
-	install iptables-accept $(CFGDDIR)
+	install -m 0644 iptables-accept $(CFGDDIR)
 	cp -a policy-routing-dsl $(USDOCDIR)/examples/
 	cp -a interface-eth0 $(USDOCDIR)/examples/interface-eth99
 	cp -a include $(USDOCDIR)/examples/
@@ -84,7 +84,10 @@ debian-prepkg: debian-preprepkg
 	echo | DEBFULLNAME="$(DEBIAN_FULL_NAME)" dh_make -s --native -e "$(DEBIAN_EMAIL)" -p $(APPNAME)_$(VERSION)
 	sed -i 's#^Homepage:.*#Homepage: $(DEBIAN_HOMEPAGE)#; s#^Architecture:.*#Architecture: $(ARCH)#; /^#/d; s#^Description:.*#Description: '"$(DESC_SHORT)"'#; s#^ <insert long description, indented with spaces># '"$(DESC_LONG)"'#;' debian/control
 	sed -i 's#^Depends: .*#Depends: $(DEBIAN_DEPENDS)#' debian/control
+	sed -i 's#^Section: .*#Section: extra#' debian/control
 	sed -i '/^Depends:/aRecommends: $(DEBIAN_RECOMMENDS)' debian/control
+	sed -i 's/^Copyright:.*/Copyright: 2006-2014 Adrian Reyer <are@lihas.de>/; /likewise for another author/d; s/^Source:.*/Source: https:\/\/github.com\/LinuxHaus\/firewall-lihas/; /^#/d' debian/copyright
+	rm debian/*.ex debian/README.Debian debian/README.source
 	for file in /etc/firewall.lihas.d/config.xml /etc/firewall.lihas.d/iptables-accept /etc/firewall.lihas.d/log4perl.conf /etc/firewall.lihas.d/localhost; do echo $i >> debian/conffiles; done
 debian-dpkg:
 	dpkg-buildpackage -sa -rfakeroot -tc

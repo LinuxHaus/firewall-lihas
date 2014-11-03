@@ -1,4 +1,4 @@
-
+#!/bin/bash
 IPT_MANGLE () {
   echo $* >&7
 }

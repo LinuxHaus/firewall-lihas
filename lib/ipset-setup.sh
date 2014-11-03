@@ -1,3 +1,4 @@
+#!/bin/bash
 if [ "x$HAVE_IPSET" == "x1" ]; then
   if [ -d $CONFIGDIR/groups/ipset ]; then
     find $CONFIGDIR/groups/ipset -maxdepth 1 -type d -name 'ipset-*' | 

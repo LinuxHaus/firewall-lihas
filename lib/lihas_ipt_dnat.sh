@@ -1,3 +1,4 @@
+#!/bin/bash
 lihas_ipt_dnat () {
   chain=$1
   dnet=$2
