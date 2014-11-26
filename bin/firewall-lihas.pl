@@ -242,7 +242,7 @@ sub fw_nonat {
 		  foreach my $line1 (split(/\n/,expand_hostgroup($line))) {
 		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
 		  		my ($snet, $dnet, $proto, $dport) = split(/[\s]+/, $line2);
-			    if ( $dport == 0 ) {
+			    if ( $dport =~ /^0$/ ) {
 			      print $FILEnat "-A post-$iface -s $snet -d $dnet -p $proto -j ACCEPT\n";
 			    } else {
 			      if ( $proto =~ /^icmp$/ ) {
@@ -276,7 +276,7 @@ sub fw_dnat {
 		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
 		  		my ($dnet, $mnet, $proto, $dport, $ndport) = split(/[\s]+/, $line2);
 					if ($dnet =~ /^ACCEPT$/) {
-						if ($dport == 0 ) {
+						if ($dport =~ /^0$/ ) {
 							print $FILEnat "-A pre-$iface -s $mnet -p $proto -j ACCEPT\n";
 						} else {
 							if ( $proto =~ /^icmp$/ ) {
@@ -286,9 +286,10 @@ sub fw_dnat {
 							}
 						}
 					} else {
-			      if ( $dport == 0 ) {
+			      if ( $dport =~ /^0$/ ) {
 			        print $FILEnat "-A pre-$iface -d $dnet -p $proto -j DNAT --to-destination $mnet\n";
 			      } else {
+							$ndport =~ s/:/-/g;
 			        if ( $proto =~ /^icmp$/ ) {
 			          print $FILEnat "-A pre-$iface -d $dnet -p $proto --icmp-type $dport -j DNAT --to-destination $mnet:$ndport\n";
 			        } else {
@@ -321,7 +322,7 @@ sub fw_snat {
 		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
 		  		my ($snet, $mnet, $proto, $dport) = split(/[\s]+/, $line2);
 					if ($snet =~ /^ACCEPT$/) {
-						if ($dport == 0 ) {
+						if ($dport =~ /^0$/ ) {
 							print $FILEnat "-A post-$iface -s $snet -p $proto -j ACCEPT\n";
 						} else {
 							if ( $proto =~ /^icmp$/ ) {
@@ -331,7 +332,7 @@ sub fw_snat {
 							}
 						}
 					} else {
-			      if ( $dport == 0 ) {
+			      if ( $dport =~ /^0$/ ) {
 			        print $FILEnat "-A post-$iface -s $snet -p $proto -j SNAT --to-source $mnet\n";
 			      } else {
 			        if ( $proto =~ /^icmp$/ ) {
@@ -366,7 +367,7 @@ sub fw_masquerade {
 		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
 		  		my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line2);
 		  		my $outline = "-s $snet -p $proto";
-		  		if ( $dport != "0" ) {
+		  		if ( $dport !~ /^0$/ ) {
 		  			if ( $proto =~ /^icmp$/ ) {
 		  				$outline .= " --icmp-type $dport";
 		  			} else {
@@ -403,7 +404,7 @@ sub fw_rejectclients {
 		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
 		  		my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line2);
 		  		my $outline = "$CONNSTATE NEW -s $snet -d $dnet -p $proto";
-		  		if ( $dport != "0" ) {
+		  		if ( $dport !~ /^0$/ ) {
 		  			if ( $proto =~ /^icmp$/ ) {
 		  				$outline .= " --icmp-type $dport";
 		  			} else {
@@ -441,7 +442,7 @@ sub fw_privclients {
 		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
 		  		my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line2);
 		  		my $outline = "$CONNSTATE NEW -s $snet -d $dnet -p $proto";
-		  		if ( $dport != "0" ) {
+		  		if ( $dport !~ /^0$/ ) {
 		  			if ( $proto =~ /^icmp$/ ) {
 		  				$outline .= " --icmp-type $dport";
 		  			} else {
