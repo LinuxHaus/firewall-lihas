@@ -7,7 +7,7 @@ DEBIAN_EMAIL=are@lihas.de
 DEBIAN_HOMEPAGE=https://github.com/LinuxHaus/firewall-lihas/
 DESC_SHORT=LiHAS firewall with additional features: dns-support, portal-support
 DESC_LONG=LiHAS firewall with additional features:\n policy-routing\n dns-support\n captive portal with sms service integration\n traffic shaping
-DEBIAN_DEPENDS=,iptables,perl,liblog-log4perl-perl,libgetopt-mixed-perl,libxml-application-config-perl,libxml-xpath-perl
+DEBIAN_DEPENDS=iptables,perl (>= 5.12),liblog-log4perl-perl,libgetopt-mixed-perl,libxml-application-config-perl,libxml-xpath-perl
 DEBIAN_RECOMMENDS=liblog-dispatch-perl,libpoe-component-client-dns-perl,libpoe-component-client-ping-perl,libpoe-perl,libdbi-perl,libdbd-sqlite3-perl,libnet-server-perl,xmlstarlet,ipset,net-tools,libpoe-component-server-http-perl,libhttp-message-perl
 ARCH=all
 

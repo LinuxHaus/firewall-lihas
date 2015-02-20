@@ -193,47 +193,6 @@ done
 echo "Policy Routing"
 portal_setup
 
-echo "Setting up Chains"
-for iface in interface-*; do
-  iface=${iface#interface-}
-  if [ ${iface} == "lo" ]; then
-    IPT_FILTER "-A OUTPUT -j in-$iface"
-    IPT_NAT "-A OUTPUT -j pre-$iface"
-    IPT_NAT "-A POSTROUTING -o $iface -j post-$iface"
-    IPT_FILTER "-A OUTPUT -j dns-in-$iface"
-    IPT_NAT "-A OUTPUT -j dns-pre-$iface"
-    IPT_NAT "-A POSTROUTING -o $iface -j dns-post-$iface"
-  else
-    [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
-    if [ -e interface-$iface/network ]; then
-      cat interface-$iface/network | sed '/^[ \t]*$/d; /^#/d' |
-      while read network; do
-        IPT_FILTER "-A INPUT -s $network -i $iface -j in-$iface"
-        IPT_FILTER "-A OUTPUT -d $network -o $iface -j out-$iface"
-        IPT_FILTER "-A FORWARD -s $network -i $iface -j fwd-$iface"
-        IPT_FILTER "-A INPUT -s $network -i $iface -j dns-in-$iface"
-        IPT_FILTER "-A OUTPUT -d $network -o $iface -j dns-out-$iface"
-        IPT_FILTER "-A FORWARD -s $network -i $iface -j dns-fwd-$iface" 
-      done
-    else
-      echo "WARNING: Interface $iface has no network file"
-    fi
-    IPT_NAT "-A PREROUTING -i $iface -j pre-$iface"
-    IPT_NAT "-A POSTROUTING -o $iface -j post-$iface"
-    IPT_NAT "-A PREROUTING -i $iface -j dns-pre-$iface"
-    IPT_NAT "-A POSTROUTING -o $iface -j dns-post-$iface"
-  fi
-done
-
-echo "Loopback Interface is fine"
-IPT_FILTER "-A OUTPUT	-j ACCEPT -o lo"
-IPT_FILTER "-A INPUT	-j ACCEPT -i lo"
-
-if [ -e ./script-pre ]; then
-  echo "Hook: script-pre"
-  . ./script-pre
-fi
-
 firewall-lihas -f
 
 echo Policy Routing

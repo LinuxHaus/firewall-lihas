@@ -516,10 +516,57 @@ if ($fw_privclients) {
 my $dh;
 my $commenthandle;
 my @interfaces;
+
 if ($fw_privclients) {
-	print "Avoiding NAT\n";
   opendir($dh, $cfg->find('config/@path')) || die "can't opendir ".$cfg->find('config/@path').": $!\n";
   @interfaces = grep { /^interface-/ && -d $cfg->find('config/@path')."/$_/" } readdir($dh);
+	closedir $dh;
+	print "Setting up Chains\n";
+	foreach my $interfacedir (@interfaces) {
+		-s $cfg->find('config/@path')."/$interfacedir/network" || next;
+		my $iface = $interfacedir;
+		$iface =~ s/^interface-//;
+		foreach my $line (values(@{$comment{$iface}})) {
+			print "  ".$line;
+		}
+		if ( $iface =~ /^lo$/ ) {
+      print $FILEfilter "-A OUTPUT -j in-$iface\n";
+      print $FILEnat "-A OUTPUT -j pre-$iface\n";
+      print $FILEnat "-A POSTROUTING -o $iface -j post-$iface\n";
+      print $FILEfilter "-A OUTPUT -j dns-in-$iface\n";
+      print $FILEnat "-A OUTPUT -j dns-pre-$iface\n";
+      print $FILEnat "-A POSTROUTING -o $iface -j dns-post-$iface\n";
+		} else {
+			if ( -e $cfg->find('config/@path')."/$interfacedir/network" ) {
+				open(my $cf, "<", $cfg->find('config/@path')."/$interfacedir/network") or die "cannot open < ".$cfg->find('config/@path')."/$interfacedir/network".": $!";
+				foreach my $line (<$cf>) {
+					$line =~ s/[ \t]*#.*//;
+					$line =~ m/^[ \t]*$/ && next;
+	        print $FILEfilter "-A INPUT -s $line -i $iface -j in-$iface\n";
+	        print $FILEfilter "-A OUTPUT -d $line -o $iface -j out-$iface\n";
+	        print $FILEfilter "-A FORWARD -s $line -i $iface -j fwd-$iface\n";
+	        print $FILEfilter "-A INPUT -s $line -i $iface -j dns-in-$iface\n";
+	        print $FILEfilter "-A OUTPUT -d $line -o $iface -j dns-out-$iface\n";
+	        print $FILEfilter "-A FORWARD -s $line -i $iface -j dns-fwd-$iface\n";
+				}
+				close($cf);
+			} else {
+	      print STDERR "WARNING: Interface $iface has no network file\n";
+			}
+	    print $FILEnat "-A PREROUTING -i $iface -j pre-$iface\n";
+	    print $FILEnat "-A POSTROUTING -o $iface -j post-$iface\n";
+	    print $FILEnat "-A PREROUTING -i $iface -j dns-pre-$iface\n";
+	    print $FILEnat "-A POSTROUTING -o $iface -j dns-post-$iface\n";
+		}
+	}
+	print "Loopback Interface is fine\n";
+	print $FILEfilter "-A OUTPUT	-j ACCEPT -o lo\n";
+	print $FILEfilter "-A INPUT		-j ACCEPT -i lo\n";
+	if ( -x $cfg->find('config/@path')."/script-pre" ) {
+		print "Hook: script-pre\n";
+		system($cfg->find('config/@path')."/script-pre");
+	}
+	print "Avoiding NAT\n";
 	foreach my $interfacedir (@interfaces) {
 		-s $cfg->find('config/@path')."/$interfacedir/nonat" || next;
 		my $iface = $interfacedir;
@@ -530,8 +577,6 @@ if ($fw_privclients) {
 		fw_nonat($iface, $cfg->find('config/@path')."/$interfacedir/nonat");
 	}
 	print "Adding DNAT\n";
-  opendir($dh, $cfg->find('config/@path')) || die "can't opendir ".$cfg->find('config/@path').": $!\n";
-  @interfaces = grep { /^interface-/ && -d $cfg->find('config/@path')."/$_/" } readdir($dh);
 	foreach my $interfacedir (@interfaces) {
 		-s $cfg->find('config/@path')."/$interfacedir/dnat" || next;
 		my $iface = $interfacedir;
@@ -542,8 +587,6 @@ if ($fw_privclients) {
 		fw_dnat($iface, $cfg->find('config/@path')."/$interfacedir/dnat");
 	}
 	print "Adding SNAT\n";
-  opendir($dh, $cfg->find('config/@path')) || die "can't opendir ".$cfg->find('config/@path').": $!\n";
-  @interfaces = grep { /^interface-/ && -d $cfg->find('config/@path')."/$_/" } readdir($dh);
 	foreach my $interfacedir (@interfaces) {
 		-s $cfg->find('config/@path')."/$interfacedir/snat" || next;
 		my $iface = $interfacedir;
@@ -554,8 +597,6 @@ if ($fw_privclients) {
 		fw_snat($iface, $cfg->find('config/@path')."/$interfacedir/snat");
 	}
 	print "Adding MASQUERADE\n";
-  opendir($dh, $cfg->find('config/@path')) || die "can't opendir ".$cfg->find('config/@path').": $!\n";
-  @interfaces = grep { /^interface-/ && -d $cfg->find('config/@path')."/$_/" } readdir($dh);
 	foreach my $interfacedir (@interfaces) {
 		-s $cfg->find('config/@path')."/$interfacedir/masquerade" || next;
 		my $iface = $interfacedir;
@@ -565,10 +606,7 @@ if ($fw_privclients) {
 		}
 		fw_masquerade($iface, $cfg->find('config/@path')."/$interfacedir/masquerade");
 	}
-	closedir $dh;
 	print "Rejecting extra Clients\n";
-  opendir($dh, $cfg->find('config/@path')) || die "can't opendir ".$cfg->find('config/@path').": $!\n";
-  @interfaces = grep { /^interface-/ && -d $cfg->find('config/@path')."/$_/" } readdir($dh);
 	foreach my $interfacedir (@interfaces) {
 		-s $cfg->find('config/@path')."/$interfacedir/reject" || next;
 		my $iface = $interfacedir;
@@ -578,10 +616,7 @@ if ($fw_privclients) {
 		}
 		fw_rejectclients($iface, $cfg->find('config/@path')."/$interfacedir/reject");
 	}
-	closedir $dh;
 	print "Adding priviledged Clients\n";
-  opendir($dh, $cfg->find('config/@path')) || die "can't opendir ".$cfg->find('config/@path').": $!\n";
-  @interfaces = grep { /^interface-/ && -d $cfg->find('config/@path')."/$_/" } readdir($dh);
 	foreach my $interfacedir (@interfaces) {
 		-s $cfg->find('config/@path')."/$interfacedir/privclients" || next;
 		my $iface = $interfacedir;
@@ -591,7 +626,6 @@ if ($fw_privclients) {
 		}
 		fw_privclients($iface, $cfg->find('config/@path')."/$interfacedir/privclients");
 	}
-	closedir $dh;
 } elsif ($expand_hostgroups) {
 	foreach my $line (<>) {
 		$line =~ m/^#/ && next;
