@@ -1,88 +1,122 @@
 # $Id$
 
-- 1 Verzeichnis pro Interface nach dem Muster
+Das Konfigurationsverzeichnis ist /etc/firewall-lihas.d
+darin finden die relevanten Dinge statt.
+
+Also: 
+    cd /etc/firewall-lihas.d
+
+- es gibt pro Interface ein Verzeichnis nach dem Muster
     interface-NAME
+    Interface-Aliase (z.B. eth0:0) werden nicht extra angelegt.
+
   - interface-NAME/comment 
     Kommentar, der einfach nur ausgedruckt wird
+
   - interface-NAME/network 
-    Ein Netzwerk pro Zeile, das an diesem Interface haengt, z.B. 192.168.1.0/25
+    Ein Netzwerk pro Zeile, das ueber dieses Interface erreichbar ist, z.B. 192.168.1.0/25
+    Eingetragen werden hier:
+    - die Netzwerke local zum Interface 
+    - die Netzwerke local zu evtentuell vorhandenen Interface-Aliasen
+    - ueber weiter hinter Routern erreichbare Netze
+    - das Netz 0.0.0.0/0 beim fuer die Defaultroute zustaendigen Interface
+
   - interface-NAME/network-ipsec
     Ein Netzwerk pro Zeile, das ueber IPSEC an diesem Interface haengt, z.B. 192.168.1.0/25
+    vgl. "interface-NAME/network"
+
   - interface-NAME/privclients 
-    Clients an diesem Interface bekommen diese Berechtigungen,
+    Clients an diesem Interface bekommen die angegebenen Berechtigungen
     Format: SRC-NET DST-NET PROTO PORT [OutIFACE]
+    Der Eintrag erfolgt in der Datei zu _dem_ Interface, dass die 
+    verbindingsaufbauenden Pakete _eingehend_ sieht.
+
   - interface-NAME/reject 
     Analog privclients, werden aber mit REJECT abgewiesen bevor die privclients
     ausgewertet werden. Es gibt keinen Logeintrag.
+
   - interface-NAME/snat 
     Ausgehende Verbindungen an diesem Interface werden mittels SNAT umgesetzt
     Format: OrigSRC NewSRC PROTO PORT[:RANGE]
+
   - interface-NAME/masquerade 
     Ausgehende Verbindungen an diesem Interface werden mittels SNAT umgesetzt
     Format: OrigSRC NewSRC PROTO PORT[:RANGE]
       NewSRC ist unberuecksichtigt und nur der Kompatibilitaet mit SNAT wegen angegeben.
+
   - interface-NAME/dnat 
     Eingehende Verbindungen an diesem Interface werden mittels DNAT umgesetzt
     Format: OrigTARG NewTARG PROTO OrigPORT[:RANGE] NewPORT
     Alternativ, um ein dnat zu verhindern:
       ACCEPT SourceIP PROTO OrigPORT[:RANGE]
+
   - interface-NAME/nonat
       SRC-NET DST-NET PROTO PORT
     Pakete von SRC-NET nach DST-NET werden nichtdurch SNAT/DNAT/MASQUERADE behandelt
+
   - interface-NAME/nolog 
     Verbindungen hier werden nicht geloggt. Syntax wie bei privclients, allerdings mit DROP als Ergebnis statt ACCEPT
+
   - interface-NAME/policy-routing 
     Zuordnung zu nicht-Defaultroutingtabellen
     SRC             DST             PROTO   PORTS   Routingname
     0.0.0.0/0       0.0.0.0/0       tcp     80      dsl
+
   - interface-NAME/extra 
-    Freiform Skript fuer Spezialfaelle
+    Freiform-Skript fuer Spezialfaelle
+
   - privclients, dnat, masquerade, reject koennen Zeilen nach dem Muster
        include DATEINAME
     enthalten.
+
   - privclients, dnat, snat, masquerade, nolog, reject koennen statt Rechner-/Netzadressen auch
     dns-HOSTNAME
     z.B. dns-www.lihas.de enthalten.
     DNS muss dafuer funktionieren, mehrere IPs pro Name sind ok,
-    allerdings wird nur ausgewertet was host -t a HOSTNAME in diesem
-    Moment zurueckgibt
-  - privclients, dnat, snat, masquerade, nolog, reject koennen statt
+    allerdings wird nur ausgewertet was host -t a HOSTNAME in dem Moment
+    zurueckgibt, da die Regeln erzeugt werden
+
+  - fuer privclients, dnat, snat, masquerade, nolog, reject koennen statt
     Rechner-/Netzadressen/Ports auch Gruppen in
     groups/hostgroup-GROUPNAME bzw.
     groups/portgroup-GROUPNAME
-    definiert werden, hostgroup-GROUPNAME bzw. portgroup-GROUPNAME steht dann anstelle
-    des Ports/Hosts/Netzwerks
+    definiert werden. 
+    hostgroup-GROUPNAME bzw. portgroup-GROUPNAME steht dann anstelle des Ports/Hosts/Netzwerks
+
   - interface-NAME/mark
     Ein Keyword pro Zeile, derzeit bekannt:
       dhcpd - Aktiviert Regeln, dass der Firewall DHCP-Anfragen auf dem Interface beantworten kann
 
-
-- 1 Verzeichnis pro Routingtabelle nach dem Muster
+- es gibt pro Routingtabelle ein Verzeichnis nach dem Muster
     policy-routing-TABELLENNAME
     Hiermit koennen z.B. alle Port 80/tcp Anfragen ueber eine DSL Flatrate geleitet werden
+
   - policy-routing-TABELLENNAME/comment
     Kommentar, der einfach nur ausgedruckt wird
+
   - policy-routing-TABELLENNAME/gateway
     Defaultgateway, Syntax:
-    TYP	INTERFACE [IP]
+    TYP    INTERFACE [IP]
     PPP     ppp0
     -> ppp0 wird das Defaultgateway, Point-to-Point-Adresse noetig
     NET     eth6    10.4.2.1
     -> 10.4.2.1 ueber eth6 wird das Defaultgateway
+
   - policy-routing-TABELLENNAME/key
     Zahl die mit fwmark gesetzt wird, sollte eindeutig sein pro System
 
 - Verzeichnis groups
   - Datei hostgroup-GROUPNAME
-    1 Zeile pro Host der zu der Grouppe gehoert
+    eine Zeile pro Host der zu der Grouppe gehoert
   - Datei portgroup-GROUPNAME
-    1 Zeile pro Port der dazu gehoert, wenn die urspruengliche Datei
+    eine Zeile pro Port der dazu gehoert, wenn die urspruengliche Datei
     als Protokoll nay' enthaelt, werden alle Zeile eingefuegt, wenn
     nicht nur die mit dem entsprechenden Protokoll
 
 - DNS-Aufloesung, dns-* Namen
   - Hierfuer muss der firewall-lihas-dns Cronjob installiert werden
-  - Alle dns-* Statements werden aus interface-*, include und groups genommen und, falls die TTL abgelaufen ist, neu aufgeloest.:q
+  - Alle dns-* Statements werden aus interface-*, include und groups genommen und, falls die TTL abgelaufen ist, 
+    neu aufgeloest.
 
 Berechtigungen und DNAT werden an dem Interface konfiguriert, an dem der Client haengt.
 SNAT und Masquerading werden am ausgehenden Interface konfiguriert.
