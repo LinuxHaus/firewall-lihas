@@ -18,7 +18,7 @@ Also:
     Eingetragen werden hier:
     - die Netzwerke local zum Interface 
     - die Netzwerke local zu evtentuell vorhandenen Interface-Aliasen
-    - ueber weiter hinter Routern erreichbare Netze
+    - hinter Routern erreichbare Netze
     - das Netz 0.0.0.0/0 beim fuer die Defaultroute zustaendigen Interface
 
   - interface-NAME/network-ipsec
