@@ -606,6 +606,7 @@ if ($fw_privclients) {
 			if ( -e $cfg->find('config/@path')."/$interfacedir/network" ) {
 				open(my $cf, "<", $cfg->find('config/@path')."/$interfacedir/network") or die "cannot open < ".$cfg->find('config/@path')."/$interfacedir/network".": $!";
 				foreach my $line (<$cf>) {
+					chomp($line);
 					$line =~ s/[ \t]*#.*//;
 					$line =~ m/^[ \t]*$/ && next;
 	        print $FILEfilter "-A INPUT -s $line -i $iface -j in-$iface\n";
