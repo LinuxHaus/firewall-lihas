@@ -231,6 +231,7 @@ sub expand_portgroup {
 sub fw_nonat {
 	my $iface = $_[0];
 	my $file = $_[1];
+	my $outline = "";
 	open(my $nonat, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$nonat>) {
 		$line =~ m/^#/ && next;
@@ -241,16 +242,27 @@ sub fw_nonat {
 		} else {
 		  foreach my $line1 (split(/\n/,expand_hostgroup($line))) {
 		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
-		  		my ($snet, $dnet, $proto, $dport) = split(/[\s]+/, $line2);
-			    if ( $dport =~ /^0$/ ) {
-			      print $FILEnat "-A post-$iface -s $snet -d $dnet -p $proto -j ACCEPT\n";
-			    } else {
-			      if ( $proto =~ /^icmp$/ ) {
-			        print $FILEnat "-A post-$iface -s $snet -d $dnet -p $proto --icmp-type $dport -j ACCEPT\n";
-			      } else {
-			        print $FILEnat "-A post-$iface -s $snet -d $dnet -p $proto --dport $dport -j ACCEPT\n";
-			      }
-			    }
+					my ($snet, $dnet, $proto, $dport) = split(/[\s]+/, $line2);
+					$outline = "-A post-$iface";
+					if ( $snet =~ m/ipset-(.*)/ ) {
+						$outline .= " -m set --match-set $1 src";
+					} else {
+						$outline .= " -s $snet";
+					}
+					if ( $dnet =~ m/ipset-(.*)/ ) {
+						$outline .= " -m set --match-set $1 dst";
+					} else {
+						$outline .= " -d $dnet";
+					}
+			  	if ( $dport =~ /^0$/ ) {
+			  	  print $FILEnat "$outline -p $proto -j ACCEPT\n";
+			  	} else {
+			  	  if ( $proto =~ /^icmp$/ ) {
+			  	    print $FILEnat "$outline -p $proto --icmp-type $dport -j ACCEPT\n";
+			  	  } else {
+			  	    print $FILEnat "$outline -p $proto --dport $dport -j ACCEPT\n";
+			  	  }
+			  	}
 		  	}
 		  }
 		}
@@ -264,6 +276,7 @@ sub fw_nonat {
 sub fw_dnat {
 	my $iface = $_[0];
 	my $file = $_[1];
+	my $outline = "";
 	open(my $dnat, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$dnat>) {
 		$line =~ m/^#/ && next;
@@ -275,25 +288,36 @@ sub fw_dnat {
 		  foreach my $line1 (split(/\n/,expand_hostgroup($line))) {
 		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
 		  		my ($dnet, $mnet, $proto, $dport, $ndport) = split(/[\s]+/, $line2);
+					$outline = "-A pre-$iface";
 					if ($dnet =~ /^ACCEPT$/) {
+						if ( $mnet =~ m/ipset-(.*)/ ) {
+							$outline .= " -m set --match-set $1 src";
+						} else {
+							$outline .= " -s $mnet";
+						}
 						if ($dport =~ /^0$/ ) {
-							print $FILEnat "-A pre-$iface -s $mnet -p $proto -j ACCEPT\n";
+							print $FILEnat "$outline $proto -j ACCEPT\n";
 						} else {
 							if ( $proto =~ /^icmp$/ ) {
-								print $FILEnat "-A pre-$iface -s $mnet -p $proto --icmp-type $dport -j ACCEPT\n";
+								print $FILEnat "$outline -p $proto --icmp-type $dport -j ACCEPT\n";
 							} else {
-								print $FILEnat "-A pre-$iface -s $mnet -p $proto --dport $dport -j ACCEPT\n";
+								print $FILEnat "$outline -p $proto --dport $dport -j ACCEPT\n";
 							}
 						}
 					} else {
+						if ( $dnet =~ m/ipset-(.*)/ ) {
+							$outline .= " -m set --match-set $1 dst";
+						} else {
+							$outline .= " -d $dnet";
+						}
 			      if ( $dport =~ /^0$/ ) {
-			        print $FILEnat "-A pre-$iface -d $dnet -p $proto -j DNAT --to-destination $mnet\n";
+			        print $FILEnat "$outline -p $proto -j DNAT --to-destination $mnet\n";
 			      } else {
 							$ndport =~ s/:/-/g;
 			        if ( $proto =~ /^icmp$/ ) {
-			          print $FILEnat "-A pre-$iface -d $dnet -p $proto --icmp-type $dport -j DNAT --to-destination $mnet:$ndport\n";
+			          print $FILEnat "$outline -p $proto --icmp-type $dport -j DNAT --to-destination $mnet:$ndport\n";
 			        } else {
-			          print $FILEnat "-A pre-$iface -d $dnet -p $proto --dport $dport -j DNAT --to-destination $mnet:$ndport\n";
+			          print $FILEnat "$outline -p $proto --dport $dport -j DNAT --to-destination $mnet:$ndport\n";
 			        }
 			      }
 		  		}
@@ -310,6 +334,7 @@ sub fw_dnat {
 sub fw_snat {
 	my $iface = $_[0];
 	my $file = $_[1];
+	my $outline = "";
 	open(my $snat, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$snat>) {
 		$line =~ m/^#/ && next;
@@ -321,24 +346,35 @@ sub fw_snat {
 		  foreach my $line1 (split(/\n/,expand_hostgroup($line))) {
 		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
 		  		my ($snet, $mnet, $proto, $dport) = split(/[\s]+/, $line2);
+					$outline = "-A post-$iface";
 					if ($snet =~ /^ACCEPT$/) {
+						if ( $mnet =~ m/ipset-(.*)/ ) {
+							$outline .= " -m set --match-set $1 src";
+						} else {
+							$outline .= " -s $mnet";
+						}
 						if ($dport =~ /^0$/ ) {
-							print $FILEnat "-A post-$iface -s $snet -p $proto -j ACCEPT\n";
+							print $FILEnat "$outline -p $proto -j ACCEPT\n";
 						} else {
 							if ( $proto =~ /^icmp$/ ) {
-								print $FILEnat "-A post-$iface -s $snet -p $proto --icmp-type $dport -j ACCEPT\n";
+								print $FILEnat "$outline -p $proto --icmp-type $dport -j ACCEPT\n";
 							} else {
-								print $FILEnat "-A post-$iface -s $snet -p $proto --dport $dport -j ACCEPT\n";
+								print $FILEnat "$outline -p $proto --dport $dport -j ACCEPT\n";
 							}
 						}
 					} else {
+						if ( $snet =~ m/ipset-(.*)/ ) {
+							$outline .= " -m set --match-set $1 src";
+						} else {
+							$outline .= " -s $snet";
+						}
 			      if ( $dport =~ /^0$/ ) {
-			        print $FILEnat "-A post-$iface -s $snet -p $proto -j SNAT --to-source $mnet\n";
+			        print $FILEnat "$outline -p $proto -j SNAT --to-source $mnet\n";
 			      } else {
 			        if ( $proto =~ /^icmp$/ ) {
-			          print $FILEnat "-A post-$iface -s $snet -p $proto --icmp-type $dport -j SNAT --to-source $mnet\n";
+			          print $FILEnat "$outline -p $proto --icmp-type $dport -j SNAT --to-source $mnet\n";
 			        } else {
-			          print $FILEnat "-A post-$iface -s $snet -p $proto --dport $dport -j SNAT --to-source $mnet\n";
+			          print $FILEnat "$outline -p $proto --dport $dport -j SNAT --to-source $mnet\n";
 			        }
 			      }
 		  		}
@@ -355,6 +391,7 @@ sub fw_snat {
 sub fw_masquerade {
 	my $iface = $_[0];
 	my $file = $_[1];
+	my $outline;
 	open(my $masquerade, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$masquerade>) {
 		$line =~ m/^#/ && next;
@@ -365,19 +402,24 @@ sub fw_masquerade {
 		} else {
 		  foreach my $line1 (split(/\n/,expand_hostgroup($line))) {
 		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
+					$outline = "-A post-$iface";
 		  		my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line2);
-		  		my $outline = "-s $snet -p $proto";
+					if ( $snet =~ m/ipset-(.*)/ ) {
+						$outline .= " -m set --match-set $1 src";
+					} else {
+						$outline .= " -s $snet";
+					}
 		  		if ( $dport !~ /^0$/ ) {
 		  			if ( $proto =~ /^icmp$/ ) {
-		  				$outline .= " --icmp-type $dport";
+		  				$outline .= "-p $proto --icmp-type $dport";
 		  			} else {
-		  				$outline .= " --dport $dport";
+		  				$outline .= "-p $proto --dport $dport";
 		  			}
 		  		}
 		  		if ( defined($oiface) && $oiface !~ /^$/ ) {
-		  			print $FILEnat "-A post-$iface $outline -o $oiface -j MASQUERADE\n";
+		  			print $FILEnat "$outline -o $oiface -j MASQUERADE\n";
 		  		} else {
-		  			print $FILEnat "-A post-$iface $outline -j MASQUERADE\n";
+		  			print $FILEnat "$outline -j MASQUERADE\n";
 		  		}
 		  	}
 		  }
@@ -392,6 +434,7 @@ sub fw_masquerade {
 sub fw_rejectclients {
 	my $iface = $_[0];
 	my $file = $_[1];
+	my $outline = "";
 	open(my $rejectclients, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$rejectclients>) {
 		$line =~ m/^#/ && next;
@@ -402,8 +445,19 @@ sub fw_rejectclients {
 		} else {
 		  foreach my $line1 (split(/\n/,expand_hostgroup($line))) {
 		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
+		  		$outline = "$CONNSTATE NEW";
 		  		my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line2);
-		  		my $outline = "$CONNSTATE NEW -s $snet -d $dnet -p $proto";
+					if ( $snet =~ m/ipset-(.*)/ ) {
+						$outline .= " -m set --match-set $1 src";
+					} else {
+						$outline .= " -s $snet";
+					}
+					if ( $dnet =~ m/ipset-(.*)/ ) {
+						$outline .= " -m set --match-set $1 dst";
+					} else {
+						$outline .= " -d $dnet";
+					}
+					$outline .= " -p $proto";
 		  		if ( $dport !~ /^0$/ ) {
 		  			if ( $proto =~ /^icmp$/ ) {
 		  				$outline .= " --icmp-type $dport";
@@ -430,6 +484,7 @@ sub fw_rejectclients {
 sub fw_privclients {
 	my $iface = $_[0];
 	my $file = $_[1];
+	my $outline;
 	open(my $privclients, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$privclients>) {
 		$line =~ m/^#/ && next;
@@ -441,7 +496,18 @@ sub fw_privclients {
 		  foreach my $line1 (split(/\n/,expand_hostgroup($line))) {
 		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
 		  		my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line2);
-		  		my $outline = "$CONNSTATE NEW -s $snet -d $dnet -p $proto";
+		  		$outline = "$CONNSTATE NEW";
+					if ( $snet =~ m/ipset-(.*)/ ) {
+						$outline .= " -m set --match-set $1 src";
+					} else {
+						$outline .= " -s $snet";
+					}
+					if ( $dnet =~ m/ipset-(.*)/ ) {
+						$outline .= " -m set --match-set $1 dst";
+					} else {
+						$outline .= " -d $dnet";
+					}
+					$outline .= " -p $proto";
 		  		if ( $dport !~ /^0$/ ) {
 		  			if ( $proto =~ /^icmp$/ ) {
 		  				$outline .= " --icmp-type $dport";

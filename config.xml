@@ -18,7 +18,7 @@
     </create>
   </database>
   <ipsets>
-    <ipset name="testset" persistent="yes">
+    <ipset name="testset" persistent="yes" backupfile="/var/lib/firewall-lihas/ipset-testset">
       <create>bitmap:ip range 10.0.10.0-10.0.13.255</create>
       <dump>ipset save testset -f /var/lib/firewall-lihas/ipset-testset</dump>
       <restore>ipset restore testset -f /var/lib/firewall-lihas/ipset-testset</restore>
