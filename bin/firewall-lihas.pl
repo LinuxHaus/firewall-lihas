@@ -651,5 +651,5 @@ $FILE->close;
 $FILEfilter->close;
 $FILEnat->close;
 $FILEmangle->close;
-# vim: ts=2 sw=2 sts=2 sr noet
 exit 0;
+# vim: ts=2 sw=2 sts=2 sr noet

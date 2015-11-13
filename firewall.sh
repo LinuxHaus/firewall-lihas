@@ -370,6 +370,10 @@ case "$1" in
   start)
         [ "$VERBOSE" != no ] && log_daemon_msg "Starting $DESC" "$NAME"
         do_start
+	if [ "x$HAVE_IPSET" == "x1" ]; then
+	    ipset_exit
+	    ipset_init
+	fi
         iptables-restore < $FILE
 	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
 	firewall-lihasd.pl
@@ -383,6 +387,9 @@ case "$1" in
   stop)
         [ "$VERBOSE" != no ] && log_daemon_msg "Stopping $DESC" "$NAME"
         do_stop
+	if [ "x$HAVE_IPSET" == "x1" ]; then
+	    ipset_exit
+	fi
 	kill -INT $(cat /var/run/firewall-lihasd.pid )
 	ps ax | awk '$5 ~ /^\/usr\/bin\/perl$/ && $6 ~ /firewall-lihasd.pl/ {print $1}' | xargs --no-run-if-empty kill
         ;;
@@ -393,6 +400,10 @@ case "$1" in
         #
         log_daemon_msg "Reloading $DESC" "$NAME"
         do_start
+	if [ "x$HAVE_IPSET" == "x1" ]; then
+	    ipset_exit
+	    ipset_init
+	fi
         iptables-restore < $FILE
 	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
 	kill -INT $(cat /var/run/firewall-lihasd.pid )
@@ -406,6 +417,10 @@ case "$1" in
         #
         log_daemon_msg "Restarting $DESC" "$NAME"
         do_start
+	if [ "x$HAVE_IPSET" == "x1" ]; then
+	    ipset_exit
+	    ipset_init
+	fi
         iptables-restore < $FILE
 	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
 	kill -INT $(cat /var/run/firewall-lihasd.pid )

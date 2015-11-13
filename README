@@ -84,6 +84,20 @@
   - Hierfuer muss der firewall-lihas-dns Cronjob installiert werden
   - Alle dns-* Statements werden aus interface-*, include und groups genommen und, falls die TTL abgelaufen ist, neu aufgeloest.:q
 
+- ipset Support
+  - Konfiguration in config.xml
+  /applicationconfig/application/ipsets/ipset
+    <ipset name="testset" persistent="yes" backupfile="/var/lib/firewall-lihas/ipset-testset">
+      <create>bitmap:ip range 10.0.10.0-10.0.13.255</create>
+      <dump>ipset save testset -f /var/lib/firewall-lihas/ipset-testset</dump>
+      <restore>ipset restore testset -f /var/lib/firewall-lihas/ipset-testset</restore>
+    </ipset>
+  - persistent="yes": Inhalt bleibt ueber Neustarts erhalten
+  - backupfile="/var/lib/firewall-lihas/ipset-testset": Datei in die dieses ipset gesichert wird
+  - name="testset": Name des ipset
+  - maximum name length for ipset: 21 characters
+  - call: ipset-ipsetname as source or destination in privclients
+
 Berechtigungen und DNAT werden an dem Interface konfiguriert, an dem der Client haengt.
 SNAT und Masquerading werden am ausgehenden Interface konfiguriert.
 
