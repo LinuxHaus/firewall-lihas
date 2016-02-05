@@ -81,7 +81,7 @@ debian-clean:
 debian-preprepkg:
 	if test -d debian ; then echo "ERROR: debian directory already exists"; exit 1; fi
 debian-prepkg: debian-preprepkg
-	echo | DEBFULLNAME="$(DEBIAN_FULL_NAME)" dh_make -s --native -e "$(DEBIAN_EMAIL)" -p $(APPNAME)_$(VERSION)
+	echo | DEBFULLNAME="$(DEBIAN_FULL_NAME)" dh_make -sy --native -e "$(DEBIAN_EMAIL)" -p $(APPNAME)_$(VERSION)
 	sed -i 's#^Homepage:.*#Homepage: $(DEBIAN_HOMEPAGE)#; s#^Architecture:.*#Architecture: $(ARCH)#; /^#/d; s#^Description:.*#Description: $(DESC_SHORT)#; s#^ <insert long description, indented with spaces># $(DESC_LONG)#; s#^Depends: .*#Depends: $${misc:Depends}$(DEBIAN_DEPENDS)#; s#^Section: .*#Section: admin#; s#^Standards-Version: .*#Standards-Version: 3.9.6#; /^Depends:/aRecommends: $(DEBIAN_RECOMMENDS)' debian/control
 	sed -i 's/^Copyright:.*/Copyright: 2006-2014 Adrian Reyer <are@lihas.de>/; /likewise for another author/d; s#^Source:.*#Source: https://github.com/LinuxHaus/firewall-lihas#; /^#/d' debian/copyright
 	rm debian/*.ex debian/README.Debian debian/README.source debian/firewall-lihas.doc-base.EX

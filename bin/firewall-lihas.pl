@@ -541,6 +541,7 @@ sub fw_privclients {
 sub fw_policyrouting {
 	my $iface = $_[0];
 	my $file = $_[1];
+	my %policymark;
 	my $outline;
 	open(my $policyrouting, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$policyrouting>) {
