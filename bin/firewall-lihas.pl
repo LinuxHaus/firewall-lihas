@@ -83,6 +83,13 @@ our %portgroup;
 
 =head1 Functions
 
+=head2 parse_policies
+
+=cut
+
+sub parse_policies {
+}
+
 =head2 parse_hostgroup
 
 Goal: load every hostgroup file only once
@@ -411,9 +418,9 @@ sub fw_masquerade {
 					}
 		  		if ( $dport !~ /^0$/ ) {
 		  			if ( $proto =~ /^icmp$/ ) {
-		  				$outline .= "-p $proto --icmp-type $dport";
+		  				$outline .= " -p $proto --icmp-type $dport";
 		  			} else {
-		  				$outline .= "-p $proto --dport $dport";
+		  				$outline .= " -p $proto --dport $dport";
 		  			}
 		  		}
 		  		if ( defined($oiface) && $oiface !~ /^$/ ) {
@@ -526,6 +533,52 @@ sub fw_privclients {
 		}
 	}
 	close $privclients;
+}
+
+=head2 fw_policyrouting
+=cut
+
+sub fw_policyrouting {
+	my $iface = $_[0];
+	my $file = $_[1];
+	my $outline;
+	open(my $policyrouting, "<", $file) or die "cannot open < $file: $!";
+	foreach my $line (<$policyrouting>) {
+		$line =~ m/^#/ && next;
+		$line =~ m/^[ \t]*$/ && next;
+		$line =~ s/#.*//;
+		if ($line =~ /^include[\s]+([^\s]+)/) {
+			fw_policyrouting($iface, $cfg->find('config/@path')."/$1");
+		} else {
+		  foreach my $line1 (split(/\n/,expand_hostgroup($line))) {
+		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
+		  		my ($snet, $dnet, $proto, $dport, $policy) = split(/[\s]+/, $line2);
+					if ( $snet =~ m/ipset-(.*)/ ) {
+						$outline .= " -m set --match-set $1 src";
+					} else {
+						$outline .= " -s $snet";
+					}
+					if ( $dnet =~ m/ipset-(.*)/ ) {
+						$outline .= " -m set --match-set $1 dst";
+					} else {
+						$outline .= " -d $dnet";
+					}
+					$outline .= " -p $proto";
+		  		if ( $dport !~ /^0$/ ) {
+		  			if ( $proto =~ /^icmp$/ ) {
+		  				$outline .= " --icmp-type $dport";
+		  			} else {
+		  				$outline .= " --dport $dport";
+		  			}
+		  		}
+					$outline .= "-j MARK --set-mark $policymark{$policy}";
+		  		print $FILEmangle "-A OUTPUT $outline -j ACCEPT\n";
+		  		print $FILEmangle "-A PREROUTING $outline -j ACCEPT\n";
+		  	}
+		  }
+		}
+	}
+	close $policyrouting;
 }
 
 =head2 do_shaping
@@ -692,6 +745,16 @@ if ($fw_privclients) {
 			print "  ".$line;
 		}
 		fw_privclients($iface, $cfg->find('config/@path')."/$interfacedir/privclients");
+	}
+	print "Adding Policy Routing\n";
+	foreach my $interfacedir (@interfaces) {
+		-s $cfg->find('config/@path')."/$interfacedir/policy-routing" || next;
+		my $iface = $interfacedir;
+		$iface =~ s/^interface-//;
+		foreach my $line (values(@{$comment{$iface}})) {
+			print "  ".$line;
+		}
+		fw_policyrouting($iface, $cfg->find('config/@path')."/$interfacedir/policy-routing");
 	}
 } elsif ($expand_hostgroups) {
 	foreach my $line (<>) {

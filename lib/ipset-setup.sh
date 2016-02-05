@@ -36,7 +36,7 @@ for i in $(seq 1 $ipsetcount); do
 				if [ xyes == "x$ipsetpersist" ]; then
 					if [ x != "x$ipsetbackup" ]; then
 						if [ -e "$ipsetbackup" ]; then
-							eval $(xmlstarlet sel -t -v applicationconfig/application/ipsets/ipset\[@name=\'grp_medneo\'\]/restore $CONFIGDIR/config.xml | xmlstarlet unesc )
+							eval $(xmlstarlet sel -t -v applicationconfig/application/ipsets/ipset\[@name=\'$ipsetname\'\]/restore $CONFIGDIR/config.xml | xmlstarlet unesc )
 						fi
 					else
 						echo "Please add attribute 'backupfile' to $CONFIGDIR/config.xml applicationconfig/application/ipsets/ipset[name=$ipsetname] to use persistent ipset" | tee -a $LOGSTARTUP
@@ -61,7 +61,7 @@ for i in $(seq 1 $ipsetcount); do
 	if [ x != "x$ipsetname" ]; then
 		if [ xyes == "x$ipsetpersist" ]; then
 			if [ x != "x$ipsetbackup" ]; then
-				ipset -file $ipsetbackup save "$ipsetname"
+				eval $(xmlstarlet sel -t -v applicationconfig/application/ipsets/ipset\[@name=\'$ipsetname\'\]/dump $CONFIGDIR/config.xml | xmlstarlet unesc )
 			else
 				echo "Please add attribute 'backupfile' to $CONFIGDIR/config.xml applicationconfig/application/ipsets/ipset[name=$ipsetname] to use persistent ipset" | tee -a $LOGSTARTUP
 			fi

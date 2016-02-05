@@ -196,8 +196,6 @@ portal_setup
 firewall-lihas -f
 
 echo Policy Routing
-IPT_MANGLE "-I PREROUTING -j MARK --set-mark 0"
-IPT_MANGLE "-I OUTPUT -j MARK --set-mark 0"
 for policy in policy-routing-*; do
   policy=${policy#policy-routing-}
   if [ -e policy-routing-$policy/key ]; then
@@ -234,6 +232,8 @@ for policy in policy-routing-*; do
     fi
   fi
 done
+IPT_MANGLE "-I PREROUTING -j MARK --set-mark 0"
+IPT_MANGLE "-I OUTPUT -j MARK --set-mark 0"
 for iface in interface-*; do
   iface=${iface#interface-}
   if [ -e interface-$iface/policy-routing ]; then
