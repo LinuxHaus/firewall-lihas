@@ -567,9 +567,9 @@ sub fw_policyrouting {
 					$outline .= " -p $proto";
 		  		if ( $dport !~ /^0$/ ) {
 		  			if ( $proto =~ /^icmp$/ ) {
-		  				$outline .= " --icmp-type $dport";
+		  				$outline .= " --icmp-type $dport ";
 		  			} else {
-		  				$outline .= " --dport $dport";
+		  				$outline .= " --dport $dport ";
 		  			}
 		  		}
 					$outline .= "-j MARK --set-mark $policymark{$policy}";
