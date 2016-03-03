@@ -554,6 +554,7 @@ sub fw_policyrouting {
 		  foreach my $line1 (split(/\n/,expand_hostgroup($line))) {
 		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
 		  		my ($snet, $dnet, $proto, $dport, $policy) = split(/[\s]+/, $line2);
+					$outline = "";
 					if ( $snet =~ m/ipset-(.*)/ ) {
 						$outline .= " -m set --match-set $1 src";
 					} else {
