@@ -567,12 +567,12 @@ sub fw_policyrouting {
 					$outline .= " -p $proto";
 		  		if ( $dport !~ /^0$/ ) {
 		  			if ( $proto =~ /^icmp$/ ) {
-		  				$outline .= " --icmp-type $dport ";
+		  				$outline .= " --icmp-type $dport";
 		  			} else {
-		  				$outline .= " --dport $dport ";
+		  				$outline .= " --dport $dport";
 		  			}
 		  		}
-					$outline .= "-j MARK --set-mark $policymark{$policy}";
+					$outline .= " -j MARK --set-mark $policymark{$policy}";
 		  		print $FILEmangle "-A OUTPUT $outline -j ACCEPT\n";
 		  		print $FILEmangle "-A PREROUTING $outline -j ACCEPT\n";
 		  	}
