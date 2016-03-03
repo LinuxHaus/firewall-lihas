@@ -26,6 +26,7 @@ my $expand_hostgroups=0;
 my $expand_portgroups=0;
 my $fw_privclients=0;
 my $do_shaping=0;
+our %policymark;
 my $CONNSTATE=$ENV{'CONNSTATE'};
 use Getopt::Mixed;
 my ($option, $value);
@@ -541,7 +542,6 @@ sub fw_privclients {
 sub fw_policyrouting {
 	my $iface = $_[0];
 	my $file = $_[1];
-	my %policymark;
 	my $outline;
 	open(my $policyrouting, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$policyrouting>) {
@@ -627,6 +627,21 @@ if ($fw_privclients) {
 			open(my $cf, "<", $cfg->find('config/@path')."/$interfacedir/comment") or die "cannot open < ".$cfg->find('config/@path')."/$interfacedir/comment".": $!";
 			foreach my $line (<$cf>) {
 				push(@{$comment{$iface}}, $line);
+			}
+			close($cf);
+		}
+	}
+	opendir(my $dh, $cfg->find('config/@path')) || die "can't opendir ".$cfg->find('config/@path').": $!\n";
+	my @policies = grep { /^policy-routing-/ && -d $cfg->find('config/@path')."/$_/" } readdir($dh);
+  foreach my $policydir (@policies) {
+		-s $cfg->find('config/@path')."/$policydir/key" || next;
+		my $policy = $policydir;
+		$policy =~ s/^policy-routing-//;
+		if ( -e $cfg->find('config/@path')."/$policydir/key" ) {
+			open(my $cf, "<", $cfg->find('config/@path')."/$policydir/key") or die "cannot open < ".$cfg->find('config/@path')."/$policydir/key".": $!";
+			foreach my $line (<$cf>) {
+				chop $line;
+				$policymark{$policy}=$line;
 			}
 			close($cf);
 		}
