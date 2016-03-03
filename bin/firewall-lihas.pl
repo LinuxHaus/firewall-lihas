@@ -573,8 +573,8 @@ sub fw_policyrouting {
 		  			}
 		  		}
 					$outline .= " -j MARK --set-mark $policymark{$policy}";
-		  		print $FILEmangle "-A OUTPUT $outline -j ACCEPT\n";
-		  		print $FILEmangle "-A PREROUTING $outline -j ACCEPT\n";
+		  		print $FILEmangle "-A OUTPUT $outline\n";
+		  		print $FILEmangle "-A PREROUTING $outline\n";
 		  	}
 		  }
 		}
