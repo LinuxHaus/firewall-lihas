@@ -1,3 +1,7 @@
 # SRC DST PROTO PORT:RANGE
 0.0.0.0/0	0.0.0.0/0	tcp	22
+# Path MTU Discovery
+0.0.0.0/0	0.0.0.0/0	icmp	3
+0.0.0.0/0	0.0.0.0/0	icmp	4
+# Or just all ICMP
 0.0.0.0/0	0.0.0.0/0	icmp	0

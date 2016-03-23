@@ -1,7 +1,7 @@
 /etc/ipsec.secrets needs IPs in combination with pre-shared keys.
 Best effort: use rsa-keys and get rid of the trouble, even better: use
 OpenVPN.
-If that can't be done, you may try this workaround:
+If that can't be done, you may try this feature:
 Add the necessary contents to
 /etc/firewall.lihas.d/feature/ipsec/ipsec.secrets.dns like this:
 dns-hostname.one dns-hostname.two : PSK "ThisIsTheSecretKey"

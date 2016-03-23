@@ -71,17 +71,22 @@ if (defined $param{'accept'}) {
 $time = time();
 if ($accept=~/Anmelden/ ) {
 	if (! defined $param{'accept_tos'} || $param{'accept_tos'} !~ /^ja$/) {
-	    $error = "Please accept the Terms of Service";
+		$error = "Please accept the Terms of Service";
+		$page = $cfg->find('//feature/portal/page/@error');
 	} elsif (! defined $param{'auth_user'} || $param{'auth_user'} !~ /^[\+0-9a-zA-Z_-]+$/) {
-	    $error = "Invalid User";
+		$error = "Invalid User";
+		$page = $cfg->find('//feature/portal/page/@error');
 	} elsif (! defined $param{'auth_pass'} || $param{'auth_pass'} !~ /^[\+0-9a-zA-Z_-]+$/) {
-	    $error = "Invalid Password";
+		$error = "Invalid Password";
+		$page = $cfg->find('//feature/portal/page/@error');
 	} else {
+		my $hasuser=0;
 		$sql = "SELECT name,pass,start_date,end_date,max_duration,max_clients,start_use,id FROM portal_users WHERE name=? AND pass=?";
-	  $sth = $dbh->prepare($sql);
-	  $sth->execute($param{'auth_user'}, $param{'auth_pass'});
-	  $sth->bind_columns(\$name, \$pass, \$start_date, \$end_date, \$max_duration, \$max_clients, \$start_use, \$userrowid);
-	  while ( $sth->fetch ) {
+		$sth = $dbh->prepare($sql);
+		$sth->execute($param{'auth_user'}, $param{'auth_pass'});
+		$sth->bind_columns(\$name, \$pass, \$start_date, \$end_date, \$max_duration, \$max_clients, \$start_use, \$userrowid);
+		while ( $sth->fetch ) {
+			$hasuser=1;
 			if ( $max_clients>0 ) {
 				if ( $start_date < $time ) {
 					if ( $end_date > $time ) {
@@ -105,7 +110,7 @@ if ($accept=~/Anmelden/ ) {
 						$sth1->execute($mac);
 						if ( $sth1->fetch ) {
 							print STDERR "Update $enddate\n";
-						  $sql = "UPDATE portal_clients SET end_date=? WHERE mac=?";
+							$sql = "UPDATE portal_clients SET end_date=? WHERE mac=?";
 							$sth1 = $dbh->prepare($sql);
 							$sth1->execute($enddate,$mac);
 						} else {
@@ -138,24 +143,30 @@ if ($accept=~/Anmelden/ ) {
 					}
 				} else {
 					$error = "Ticket not valid, yet.";
+					$page = $cfg->find('//feature/portal/page/@error');
 				}
 			} else {
-	      $error = "Too many concurrent clients.";
+				$error = "Too many concurrent clients.";
+				$page = $cfg->find('//feature/portal/page/@error');
 			}
-	  }
+		}
+		if ($hasuser==0) {
+			$error = "Unknown user or invalid password";
+			$page = $cfg->find('//feature/portal/page/@error');
+		}
 	}
 } elsif ( $accept=~/Registrieren/ ) {
 	my $hash;
 # SMS Identification
 	if ($param{'auth_user'} !~ /^[\+0-9]+$/) {
-	  $error = "Invalid User";
+		$error = "Invalid User";
 	} else {
-	  $hash=sha1_base64(rand()*1000000000000000);
-	  $hash =~ s/^(.{8}).*/$1/;
+		$hash=sha1_base64(rand()*1000000000000000);
+		$hash =~ s/^(.{8}).*/$1/;
 
-	  $sql = "INSERT INTO portal_users (name, pass, start_date, end_date, max_duration, max_clients) VALUES (?,?,?,?,?,?)";
-	  $sth1 = $dbh->prepare($sql);
-	  $sth1->execute($param{'auth_user'},$hash,$time,$time+$cfg->find('feature/portal/password/sms/expire'),$cfg->find('feature/portal/session/expire'),$cfg->find('feature/portal/password/sms/clients_max'));
+		$sql = "INSERT INTO portal_users (name, pass, start_date, end_date, max_duration, max_clients) VALUES (?,?,?,?,?,?)";
+		$sth1 = $dbh->prepare($sql);
+		$sth1->execute($param{'auth_user'},$hash,$time,$time+$cfg->find('feature/portal/password/sms/expire'),$cfg->find('feature/portal/session/expire'),$cfg->find('feature/portal/password/sms/clients_max'));
 		my $smsmessage = $cfg->find('feature/portal/password/sms/mobilant/message');
 		$smsmessage =~ s/__USER__/$param{'auth_user'}/;
 		$smsmessage =~ s/__PASS__/$hash/;
@@ -172,7 +183,7 @@ if ($accept=~/Anmelden/ ) {
 	$page = $cfg->find('//feature/portal/page/@login');
 }
 
-open(PAGE,$page) || die $cfg->find('//feature/portal/page/@login'), " failed";
+open(PAGE,$page) || die "$page failed";
 print $cgi->header();
 while (<PAGE>) {
 	s/__ERROR__/$error/;
