@@ -632,7 +632,7 @@ if ($fw_privclients) {
 			close($cf);
 		}
 	}
-	opendir(my $dh, $cfg->find('config/@path')) || die "can't opendir ".$cfg->find('config/@path').": $!\n";
+	opendir($dh, $cfg->find('config/@path')) || die "can't opendir ".$cfg->find('config/@path').": $!\n";
 	my @policies = grep { /^policy-routing-/ && -d $cfg->find('config/@path')."/$_/" } readdir($dh);
   foreach my $policydir (@policies) {
 		-s $cfg->find('config/@path')."/$policydir/key" || next;

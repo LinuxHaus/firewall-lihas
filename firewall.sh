@@ -336,15 +336,15 @@ if [ -e ./script-post ]; then
 fi
 
 echo *filter > $FILE
-cat $FILEfilter | sed '/-s dns-/d; /-s dns/d' >> $FILE
+cat $FILEfilter | sed '/-[sd] dns-/d' >> $FILE
 cat $FILEfilter | sed -n '/-[sd] dns-/p' > $DATAPATH/dns-filter
 echo COMMIT >> $FILE
 echo *mangle >> $FILE
-cat $FILEmangle | sed '/-sd dns-/d; /-s dns/d' >> $FILE
+cat $FILEmangle | sed '/-[sd] dns-/d' >> $FILE
 cat $FILEmangle | sed -n '/-[sd] dns-/p' > $DATAPATH/dns-mangle
 echo COMMIT >> $FILE
 echo *nat >> $FILE
-cat $FILEnat | sed '/-d dns-/d; /-s dns/d' >> $FILE
+cat $FILEnat | sed '/-[sd] dns-/d' >> $FILE
 cat $FILEnat | sed -n '/-[sd] dns-/p' > $DATAPATH/dns-nat
 echo COMMIT >> $FILE
 
