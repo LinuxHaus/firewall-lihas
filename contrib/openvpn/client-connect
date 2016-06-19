@@ -1,0 +1,38 @@
+#!/bin/bash
+# enable in openvpn config with --client-connect 
+# For this very example:i
+# add --up, --client-connect and --client-disconnect to openvpn.conf:
+#  client-connect /usr/local/bin/openvpn-client-connect
+#  client-disconnect /usr/local/bin/openvpn-client-connect
+#  up /usr/local/bin/openvpn-client-connect
+# needs sudo for 'nobody':
+#  nobody  ALL=(ALL) NOPASSWD:/sbin/ipset add testset [0-9]*.[0-9]*.[0-9]*.[0-9]*
+#  nobody  ALL=(ALL) NOPASSWD:/sbin/ipset del testset [0-9]*.[0-9]*.[0-9]*.[0-9]*
+# and ofc ipset to be set up in /etc/firewall-lihas.d/config.xml for table testset:
+#  <applicationconfig><application><ipsets>
+#    <ipset name="testset" persistent="yes" backupfile="/var/lib/firewall-lihas/ipset-testset">
+#      <create>bitmap:ip range 10.0.10.0-10.0.13.255</create>
+#      <dump>ipset -f /var/lib/firewall-lihas/ipset-testset save testset</dump>
+#      <restore>ipset -f /var/lib/firewall-lihas/ipset-testset restore testset</restore>
+#    </ipset>
+#  </ipsets><application/><applicationconfig/>
+ 
+env | sort | logger -t "OpenVPN CCD: "
+id | logger -t "OpenVPN CCD id: "
+echo $* | logger -t "OpenVPN CCD argv: "
+stat "$1" | logger -t "OpenVPN CCD stat: "
+case $script_type in
+    client-connect)
+	    sudo /sbin/ipset add testset $ifconfig_pool_remote_ip
+	    ;;
+    client-disconnect)
+	    sudo /sbin/ipset del testset $ifconfig_pool_remote_ip
+	    ;;
+    up)
+	    /sbin/ipset flush testset
+	    ;;
+    *)
+	    logger "ovpn: unknown script_type $script_type"
+	    ;;
+esac
+exit 0

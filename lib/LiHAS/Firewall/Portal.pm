@@ -30,6 +30,7 @@ sub portal_init {
 	# $sthupdate->execute($portalname,$ip,$mac);
   if (open(my $fh, "<", "$configpath/feature/portal/$portalname/clients-static")) {
     foreach (<$fh>) {
+			/^#/ && next;
 	  	($mac,$ip,$comment) = split /[\s\r\n]+/;
 	  	$comment =~ s/"//g; # No " allowed in ipset comments
 	  	$mac =~ y/[A-Z]/[a-z]/;

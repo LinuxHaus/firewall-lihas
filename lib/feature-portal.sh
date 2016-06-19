@@ -1,3 +1,4 @@
+#!/bin/bash
 portal_ipt_privclients () {
   # TODO: join with lihas_ipt_privclients 
   chain=$1
