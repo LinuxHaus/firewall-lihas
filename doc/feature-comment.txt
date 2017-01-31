@@ -1,0 +1,6 @@
+If the iptables module 'comment' is available, rule generation logs the
+IDs of the used files as a comment on each generated rule.
+The ID<->file information is stored in a database in db_dbd, configured
+via config.xml. By default this is /var/lib/firewall-lihas/db.sqlite.
+To get a full list use:
+  sqlite3 /var/lib/firewall-lihas/db.sqlite "SELECT * FROM fw_comments"

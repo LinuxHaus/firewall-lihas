@@ -205,7 +205,7 @@ for policy in policy-routing-*; do
     [ -e policy-routing-$policy/comment ] && cat policy-routing-$policy/comment | sed 's/^/ /'
     key=$(cat policy-routing-$policy/key)
     if [ -e policy-routing-$policy/gateway ]; then
-      cat policy-routing-$policy/gateway | firewall-lihas -H -P | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+      cat policy-routing-$policy/gateway | sed '/^[ \t]*$/d; /^#/d' |
       while read type interface gateway; do
         ip route flush table $policy
         if [ $type == "PPP" ]; then

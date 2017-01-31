@@ -21,16 +21,18 @@ our $DEBUG=0;
 use Log::Log4perl qw(:easy);
 Log::Log4perl::init('/etc/firewall.lihas.d/log4perl.conf');
 if (! Log::Log4perl::initialized()) { WARN "uninit"; } else { }
+use DBI;
 
 my $expand_hostgroups=0;
 my $expand_portgroups=0;
 my $fw_privclients=0;
 my $do_shaping=0;
+our $do_comment=$ENV{'HAVE_COMMENT'};
 our %policymark;
 my $CONNSTATE=$ENV{'CONNSTATE'};
 use Getopt::Mixed;
 my ($option, $value);
-Getopt::Mixed::init("H P s d f c=s conntrack>c firewall>f expand-hostgroup>H expand-portgroup>P shaping>s debug>d");
+Getopt::Mixed::init("H P s d f v c=s comment>v conntrack>c firewall>f expand-hostgroup>H expand-portgroup>P shaping>s debug>d");
 while (($option, $value) = Getopt::Mixed::nextOption()) {
 	if ($option=~/^H$/) {
 		$expand_hostgroups=1;
@@ -42,8 +44,15 @@ while (($option, $value) = Getopt::Mixed::nextOption()) {
 		$fw_privclients=1;
 	} elsif ($option=~/^s$/) {
 		$do_shaping=1;
+		WARN "Shaping is not yet implemented";
+	} elsif ($option=~/^v$/) {
+		$do_comment=1;
+		WARN "Comments are not yet fully implemented";
 	} elsif ($option=~/^c$/) {
-		$do_shaping=1;
+		$do_conntrack=1;
+		WARN "Connection tracking synchronization is not yet implemented";
+	} else {
+		ERROR "Unknown Option $option\n";
 	}
 }
 Getopt::Mixed::cleanup();
@@ -81,6 +90,8 @@ my $cfg = new XML::Application::Config("LiHAS-Firewall","/etc/firewall.lihas.d/c
 
 our %hostgroup;
 our %portgroup;
+our $nextcommentid=1;
+our $commentchain;
 
 =head1 Functions
 
@@ -101,17 +112,19 @@ sub parse_hostgroup {
 	my ($arg_ref) = @_;
 	my $path = $arg_ref->{path};
 	my $name = $arg_ref->{name};
+	my $dbh = $arg_ref->{dbh};
 	if (!defined ${$hostgroup{$name}}{defined}) {
 		${$hostgroup{$name}}{defined}=1;
 		${$hostgroup{$name}}{hosts}=[];
 		open(my $fh, "<", $path."/groups/hostgroup-".$name) or die "cannot open < ".$path."/groups/hostgroup-".$name.": $!";
+		$hostgroup{$name}{comment} = firewall_comment_add_key($dbh,"groups/hostgroup-".$name);
 		foreach my $line (<$fh>) {
 			chop $line;
 			$line =~ m/^#/ && next;
 			$line =~ m/^[ \t]*$/ && next;
 			if ( $line =~ m/^hostgroup-([^ ]*)(|[ \t]*#.*)$/ ) {
 				if (!defined $hostgroup{$1}{defined}) {
-					parse_hostgroup({path=>$path, name=>$1});
+					parse_hostgroup({path=>$path, name=>$1, dbh=>$dbh});
 				} else {
 				}
 				foreach my $host (values(@{$hostgroup{$1}{hosts}})) {
@@ -132,12 +145,15 @@ Goal: load every hostgroup file only once
 =cut
 
 sub expand_hostgroup {
-	my $line = $_[0];
+	my ($arg_ref) = @_;
+	my $line = $arg_ref->{line};
+	my $dbh = $arg_ref->{dbh};
 	my $replaceline='';
 	my $resultline='';
 	my $name = $line;
 	if ( $line =~ m/hostgroup-([a-zA-Z0-9_\.-]+)\b/ ) {
 		my $name = $1;
+		$commentchain .= " " . firewall_comment_add_key($dbh,"groups/".$name);
 		if (!defined ${$hostgroup{$name}}{defined}) {
 			WARN "Hostgroup $name undefined, '$line' dropped\n";
 			$line = "";
@@ -145,7 +161,7 @@ sub expand_hostgroup {
 			foreach my $replacement (values(@{${$hostgroup{$name}}{hosts}})) {
 				$replaceline = $line;
 				$replaceline =~ s/hostgroup-$name\b/$replacement/;
-				$resultline .= expand_hostgroup($replaceline);
+				$resultline .= expand_hostgroup({dbh=>$dbh, line=>$replaceline});
 			}
 			$line = $resultline;
 		}
@@ -162,10 +178,12 @@ sub parse_portgroup {
 	my ($arg_ref) = @_;
 	my $path = $arg_ref->{path};
 	my $name = $arg_ref->{name};
+	my $dbh = $arg_ref->{dbh};
 	if (!defined ${$portgroup{$name}}{defined}) {
 		${$portgroup{$name}}{defined}=1;
 		@{$portgroup{$name}}{ports}=[];
 		open(my $fh, "<", $path."/groups/portgroup-".$name) or die "cannot open < ".$path."/groups/portgroup-".$name.": $!";
+		$portgroup{$name}{comment} = firewall_comment_add_key($dbh,"groups/portgroup-".$name);
 		foreach my $line (<$fh>) {
 			chop $line;
 			$line =~ m/^#/ && next;
@@ -174,7 +192,7 @@ sub parse_portgroup {
 				my $tmpport = $2;
 				my $tmpgrp = $2;
 				if (!defined $portgroup{$tmpgrp}{defined}) {
-					parse_portgroup({path=>$path, name=>$tmpgrp});
+					parse_portgroup({path=>$path, name=>$name, dbh=>$dbh});
 				} else {
 				}
 				foreach my $proto (keys(%{$portgroup{$tmpgrp}{proto}})) {
@@ -203,7 +221,9 @@ sub parse_portgroup {
 =cut
 
 sub expand_portgroup {
-	my $line = $_[0];
+	my ($arg_ref) = @_;
+	my $line = $arg_ref->{line};
+	my $dbh = $arg_ref->{dbh};
 	my $replaceline='';
 	my $resultline='';
 	my $name = $line;
@@ -211,6 +231,7 @@ sub expand_portgroup {
 		my $base = $1;
 		my $proto = $2;
 		my $name = $3;
+		$commentchain .= " " . firewall_comment_add_key($dbh,"groups/".$name);
 		if (!defined ${$portgroup{$name}}{defined}) {
 			WARN "Portgroup $name undefined, '$line' dropped\n";
 			$line = "";
@@ -234,11 +255,16 @@ sub expand_portgroup {
 }
 
 =head2 fw_nonat
+
+fw_nonat($dbh $iface, $startpath, $commentchain);
+
 =cut
 
 sub fw_nonat {
-	my $iface = $_[0];
-	my $file = $_[1];
+	my $dbh = $_[0];
+	my $iface = $_[1];
+	my $file = $_[2];
+	$commentchain = $_[3];
 	my $outline = "";
 	open(my $nonat, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$nonat>) {
@@ -246,12 +272,16 @@ sub fw_nonat {
 		$line =~ m/^[ \t]*$/ && next;
 		$line =~ s/#.*//;
 		if ($line =~ /^include[\s]+([^\s]+)/) {
-			fw_nonat($iface, $cfg->find('config/@path')."/$1");
+			$commentchain .= " " . firewall_comment_add_key($dbh,"$1");
+			fw_nonat($dbh, $iface, $cfg->find('config/@path')."/$1",$commentchain);
 		} else {
-		  foreach my $line1 (split(/\n/,expand_hostgroup($line))) {
-		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
+		  foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
+		  	foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
 					my ($snet, $dnet, $proto, $dport) = split(/[\s]+/, $line2);
 					$outline = "-A post-$iface";
+					if ( $do_comment ) {
+						$outline .= " -m comment --comment \"$commentchain\"";
+					}
 					if ( $snet =~ m/ipset-(.*)/ ) {
 						$outline .= " -m set --match-set $1 src";
 					} else {
@@ -282,8 +312,10 @@ sub fw_nonat {
 =cut
 
 sub fw_dnat {
-	my $iface = $_[0];
-	my $file = $_[1];
+	my $dbh = $_[0];
+	my $iface = $_[1];
+	my $file = $_[2];
+	$commentchain = $_[3];
 	my $outline = "";
 	open(my $dnat, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$dnat>) {
@@ -291,12 +323,16 @@ sub fw_dnat {
 		$line =~ m/^[ \t]*$/ && next;
 		$line =~ s/#.*//;
 		if ($line =~ /^include[\s]+([^\s]+)/) {
-			fw_dnat($iface, $cfg->find('config/@path')."/$1");
+			$commentchain .= " " . firewall_comment_add_key($dbh,"$1");
+			fw_dnat($dbh, $iface, $cfg->find('config/@path')."/$1", $commentchain);
 		} else {
-		  foreach my $line1 (split(/\n/,expand_hostgroup($line))) {
-		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
+		  foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
+		  	foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
 		  		my ($dnet, $mnet, $proto, $dport, $ndport) = split(/[\s]+/, $line2);
 					$outline = "-A pre-$iface";
+					if ( $do_comment ) {
+						$outline .= " -m comment --comment \"$commentchain\"";
+					}
 					if ($dnet =~ /^ACCEPT$/) {
 						if ( $mnet =~ m/ipset-(.*)/ ) {
 							$outline .= " -m set --match-set $1 src";
@@ -304,7 +340,7 @@ sub fw_dnat {
 							$outline .= " -s $mnet";
 						}
 						if ($dport =~ /^0$/ ) {
-							print $FILEnat "$outline $proto -j ACCEPT\n";
+							print $FILEnat "$outline -p $proto -j ACCEPT\n";
 						} else {
 							if ( $proto =~ /^icmp$/ ) {
 								print $FILEnat "$outline -p $proto --icmp-type $dport -j ACCEPT\n";
@@ -340,8 +376,10 @@ sub fw_dnat {
 =cut
 
 sub fw_snat {
-	my $iface = $_[0];
-	my $file = $_[1];
+	my $dbh = $_[0];
+	my $iface = $_[1];
+	my $file = $_[2];
+	$commentchain = $_[3];
 	my $outline = "";
 	open(my $snat, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$snat>) {
@@ -349,12 +387,16 @@ sub fw_snat {
 		$line =~ m/^[ \t]*$/ && next;
 		$line =~ s/#.*//;
 		if ($line =~ /^include[\s]+([^\s]+)/) {
-			fw_snat($iface, $cfg->find('config/@path')."/$1");
+			$commentchain .= " " . firewall_comment_add_key($dbh,"$1");
+			fw_snat($dbh, $iface, $cfg->find('config/@path')."/$1", $commentchain);
 		} else {
-		  foreach my $line1 (split(/\n/,expand_hostgroup($line))) {
-		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
-		  		my ($snet, $mnet, $proto, $dport) = split(/[\s]+/, $line2);
+			foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
+				foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
+					my ($snet, $mnet, $proto, $dport) = split(/[\s]+/, $line2);
 					$outline = "-A post-$iface";
+					if ( $do_comment ) {
+						$outline .= " -m comment --comment \"$commentchain\"";
+					}
 					if ($snet =~ /^ACCEPT$/) {
 						if ( $mnet =~ m/ipset-(.*)/ ) {
 							$outline .= " -m set --match-set $1 src";
@@ -376,18 +418,18 @@ sub fw_snat {
 						} else {
 							$outline .= " -s $snet";
 						}
-			      if ( $dport =~ /^0$/ ) {
-			        print $FILEnat "$outline -p $proto -j SNAT --to-source $mnet\n";
-			      } else {
-			        if ( $proto =~ /^icmp$/ ) {
-			          print $FILEnat "$outline -p $proto --icmp-type $dport -j SNAT --to-source $mnet\n";
-			        } else {
-			          print $FILEnat "$outline -p $proto --dport $dport -j SNAT --to-source $mnet\n";
-			        }
-			      }
-		  		}
-		  	}
-		  }
+						if ( $dport =~ /^0$/ ) {
+							print $FILEnat "$outline -p $proto -j SNAT --to-source $mnet\n";
+						} else {
+							if ( $proto =~ /^icmp$/ ) {
+								print $FILEnat "$outline -p $proto --icmp-type $dport -j SNAT --to-source $mnet\n";
+							} else {
+								print $FILEnat "$outline -p $proto --dport $dport -j SNAT --to-source $mnet\n";
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 	close $snat;
@@ -397,25 +439,31 @@ sub fw_snat {
 =cut
 
 sub fw_masquerade {
-	my $iface = $_[0];
-	my $file = $_[1];
-	my $outline;
+	my $dbh = $_[0];
+	my $iface = $_[1];
+	my $file = $_[2];
+	$commentchain = $_[3];
+	my $outline = "";
 	open(my $masquerade, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$masquerade>) {
 		$line =~ m/^#/ && next;
 		$line =~ m/^[ \t]*$/ && next;
 		$line =~ s/#.*//;
 		if ($line =~ /^include[\s]+([^\s]+)/) {
-			fw_masquerade($iface, $cfg->find('config/@path')."/$1");
+			$commentchain .= " " . firewall_comment_add_key($dbh,"$1");
+			fw_masquerade($dbh, $iface, $cfg->find('config/@path')."/$1", $commentchain);
 		} else {
-		  foreach my $line1 (split(/\n/,expand_hostgroup($line))) {
-		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
+		  foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
+		  	foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
 					$outline = "-A post-$iface";
+					if ( $do_comment ) {
+						$outline .= " -m comment --comment \"$commentchain\"";
+					}
 		  		my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line2);
 					if ( $snet =~ m/ipset-(.*)/ ) {
 						$outline .= " -m set --match-set $1 src";
 					} else {
-						$outline .= " -s $snet";
+						$outline .= " -p $proto -s $snet";
 					}
 		  		if ( $dport !~ /^0$/ ) {
 		  			if ( $proto =~ /^icmp$/ ) {
@@ -440,8 +488,10 @@ sub fw_masquerade {
 =cut
 
 sub fw_rejectclients {
-	my $iface = $_[0];
-	my $file = $_[1];
+	my $dbh = $_[0];
+	my $iface = $_[1];
+	my $file = $_[2];
+	$commentchain = $_[3];
 	my $outline = "";
 	open(my $rejectclients, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$rejectclients>) {
@@ -449,11 +499,15 @@ sub fw_rejectclients {
 		$line =~ m/^[ \t]*$/ && next;
 		$line =~ s/#.*//;
 		if ($line =~ /^include[\s]+([^\s]+)/) {
-			fw_rejectclients($iface, $cfg->find('config/@path')."/$1");
+			$commentchain .= " " . firewall_comment_add_key($dbh,"$1");
+			fw_rejectclients($dbh, $iface, $cfg->find('config/@path')."/$1", $commentchain);
 		} else {
-		  foreach my $line1 (split(/\n/,expand_hostgroup($line))) {
-		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
+		  foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
+		  	foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
 		  		$outline = "$CONNSTATE NEW";
+					if ( $do_comment ) {
+						$outline .= " -m comment --comment \"$commentchain\"";
+					}
 		  		my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line2);
 					if ( $snet =~ m/ipset-(.*)/ ) {
 						$outline .= " -m set --match-set $1 src";
@@ -490,21 +544,27 @@ sub fw_rejectclients {
 =cut
 
 sub fw_privclients {
-	my $iface = $_[0];
-	my $file = $_[1];
-	my $outline;
+	my $dbh = $_[0];
+	my $iface = $_[1];
+	my $file = $_[2];
+	$commentchain = $_[3];
+	my $outline = "";
 	open(my $privclients, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$privclients>) {
 		$line =~ m/^#/ && next;
 		$line =~ m/^[ \t]*$/ && next;
 		$line =~ s/#.*//;
 		if ($line =~ /^include[\s]+([^\s]+)/) {
-			fw_privclients($iface, $cfg->find('config/@path')."/$1");
+			$commentchain .= " " . firewall_comment_add_key($dbh,"$1");
+			fw_privclients($dbh, $iface, $cfg->find('config/@path')."/$1", $commentchain);
 		} else {
-		  foreach my $line1 (split(/\n/,expand_hostgroup($line))) {
-		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
+		  foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
+		  	foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
 		  		my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line2);
 		  		$outline = "$CONNSTATE NEW";
+					if ( $do_comment ) {
+						$outline .= " -m comment --comment \"$commentchain\"";
+					}
 					if ( $snet =~ m/ipset-(.*)/ ) {
 						$outline .= " -m set --match-set $1 src";
 					} else {
@@ -540,21 +600,27 @@ sub fw_privclients {
 =cut
 
 sub fw_policyrouting {
-	my $iface = $_[0];
-	my $file = $_[1];
-	my $outline;
+	my $dbh = $_[0];
+	my $iface = $_[1];
+	my $file = $_[2];
+	$commentchain = $_[3];
+	my $outline = "";
 	open(my $policyrouting, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$policyrouting>) {
 		$line =~ m/^#/ && next;
 		$line =~ m/^[ \t]*$/ && next;
 		$line =~ s/#.*//;
 		if ($line =~ /^include[\s]+([^\s]+)/) {
-			fw_policyrouting($iface, $cfg->find('config/@path')."/$1");
+			$commentchain .= " " . firewall_comment_add_key($dbh,"$1");
+			fw_policyrouting($dbh, $iface, $cfg->find('config/@path')."/$1", $commentchain);
 		} else {
-		  foreach my $line1 (split(/\n/,expand_hostgroup($line))) {
-		  	foreach my $line2 (split(/\n/,expand_portgroup($line1))) {
+		  foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
+		  	foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
 		  		my ($snet, $dnet, $proto, $dport, $policy) = split(/[\s]+/, $line2);
 					$outline = "";
+					if ( $do_comment ) {
+						$outline .= " -m comment --comment \"$commentchain\"";
+					}
 					if ( $snet =~ m/ipset-(.*)/ ) {
 						$outline .= " -m set --match-set $1 src";
 					} else {
@@ -590,8 +656,56 @@ sub do_shaping {
 	
 }
 
+=head2 firewall_create_db
+
+Setup the db according to the config.xml
+TODO: Unify with firewall-lihasd.pl
+
+=cut
+sub firewall_create_db {
+  my $dbh = $_[0];
+	my $sql;
+  foreach $sql (split(/;/,$cfg->find('database/create'))) {
+    if ( defined $sql ) {
+      chomp $sql;
+      $sql =~ s/\n//g;
+      $dbh->do("$sql");
+    }
+  }
+	$sql = "CREATE TABLE IF NOT EXISTS fw_comments ( id INTEGER NOT NULL, file TEXT NOT NULL, comment TEXT);";
+  $dbh->do("$sql");
+}
+
+=head2 firewall_comment_add_key($dbh)
+
+Add a commentindex/comment to the comment table, returns the commentindex used
+
+=cut
+sub firewall_comment_add_key {
+	my $dbh = $_[0];
+	my $file = $_[1];
+	my $commentid=$nextcommentid;
+	my $sql = "SELECT id FROM fw_comments WHERE file=?";
+	my $sth = $dbh->prepare("$sql");
+	$sth->execute($file);
+  $sth->bind_columns(\$commentid);
+	while ($sth->fetch()) {
+		return $commentid;
+	}
+	$sql = "INSERT INTO fw_comments (id, file, comment) VALUES (?,?,'')";
+	$sth = $dbh->prepare("$sql");
+	$sth->execute($nextcommentid,$file);
+	$nextcommentid++;
+	return $commentid;
+}
+
 =head2 main stuff
 =cut
+
+my $dbh = DBI->connect($cfg->find('database/dbd/@connectorstring'), { RaiseError => 1, AutoCommit => 1 });
+if ($fw_privclients) {
+	firewall_create_db($dbh);
+}
 
 if ($expand_hostgroups || $fw_privclients) {
   opendir(my $dh, $cfg->find('config/@path')."/groups") || die "can't opendir ".$cfg->find('config/@path')."/groups: $!\n";
@@ -601,7 +715,7 @@ if ($expand_hostgroups || $fw_privclients) {
   foreach my $file (@files) {
   	my $name = $file;
   	$name =~ s/^hostgroup-//;
-		parse_hostgroup({path=>$path, name=>$name});
+		parse_hostgroup({path=>$path, name=>$name, dbh=>$dbh});
   }
 }
 if ($expand_portgroups || $fw_privclients) {
@@ -612,7 +726,7 @@ if ($expand_portgroups || $fw_privclients) {
   foreach my $file (@files) {
   	my $name = $file;
   	$name =~ s/^portgroup-//;
-		parse_portgroup({path=>$path, name=>$name});
+		parse_portgroup({path=>$path, name=>$name, dbh=>$dbh});
   }
 }
 my %comment;
@@ -706,91 +820,98 @@ if ($fw_privclients) {
 	print "Avoiding NAT\n";
 	foreach my $interfacedir (@interfaces) {
 		-s $cfg->find('config/@path')."/$interfacedir/nonat" || next;
+		$commentchain=firewall_comment_add_key($dbh,"$interfacedir/nonat");
 		my $iface = $interfacedir;
 		$iface =~ s/^interface-//;
 		foreach my $line (values(@{$comment{$iface}})) {
 			print "  ".$line;
 		}
-		fw_nonat($iface, $cfg->find('config/@path')."/$interfacedir/nonat");
+		fw_nonat($dbh, $iface, $cfg->find('config/@path')."/$interfacedir/nonat",$commentchain);
 	}
 	print "Adding DNAT\n";
 	foreach my $interfacedir (@interfaces) {
 		-s $cfg->find('config/@path')."/$interfacedir/dnat" || next;
+		$commentchain=firewall_comment_add_key($dbh,"$interfacedir/dnat");
 		my $iface = $interfacedir;
 		$iface =~ s/^interface-//;
 		foreach my $line (values(@{$comment{$iface}})) {
 			print "  ".$line;
 		}
-		fw_dnat($iface, $cfg->find('config/@path')."/$interfacedir/dnat");
+		fw_dnat($dbh, $iface, $cfg->find('config/@path')."/$interfacedir/dnat", $commentchain);
 	}
 	print "Adding SNAT\n";
 	foreach my $interfacedir (@interfaces) {
 		-s $cfg->find('config/@path')."/$interfacedir/snat" || next;
+		$commentchain=firewall_comment_add_key($dbh,"$interfacedir/snat");
 		my $iface = $interfacedir;
 		$iface =~ s/^interface-//;
 		foreach my $line (values(@{$comment{$iface}})) {
 			print "  ".$line;
 		}
-		fw_snat($iface, $cfg->find('config/@path')."/$interfacedir/snat");
+		fw_snat($dbh, $iface, $cfg->find('config/@path')."/$interfacedir/snat", $commentchain);
 	}
 	print "Adding MASQUERADE\n";
 	foreach my $interfacedir (@interfaces) {
 		-s $cfg->find('config/@path')."/$interfacedir/masquerade" || next;
+		$commentchain=firewall_comment_add_key($dbh,"$interfacedir/masquerade");
 		my $iface = $interfacedir;
 		$iface =~ s/^interface-//;
 		foreach my $line (values(@{$comment{$iface}})) {
 			print "  ".$line;
 		}
-		fw_masquerade($iface, $cfg->find('config/@path')."/$interfacedir/masquerade");
+		fw_masquerade($dbh, $iface, $cfg->find('config/@path')."/$interfacedir/masquerade", $commentchain);
 	}
 	print "Rejecting extra Clients\n";
 	foreach my $interfacedir (@interfaces) {
 		-s $cfg->find('config/@path')."/$interfacedir/reject" || next;
+		$commentchain=firewall_comment_add_key($dbh,"$interfacedir/reject");
 		my $iface = $interfacedir;
 		$iface =~ s/^interface-//;
 		foreach my $line (values(@{$comment{$iface}})) {
 			print "  ".$line;
 		}
-		fw_rejectclients($iface, $cfg->find('config/@path')."/$interfacedir/reject");
+		fw_rejectclients($dbh, $iface, $cfg->find('config/@path')."/$interfacedir/reject", $commentchain);
 	}
 	print "Adding priviledged Clients\n";
 	foreach my $interfacedir (@interfaces) {
 		-s $cfg->find('config/@path')."/$interfacedir/privclients" || next;
+		$commentchain=firewall_comment_add_key($dbh,"$interfacedir/privclients");
 		my $iface = $interfacedir;
 		$iface =~ s/^interface-//;
 		foreach my $line (values(@{$comment{$iface}})) {
 			print "  ".$line;
 		}
-		fw_privclients($iface, $cfg->find('config/@path')."/$interfacedir/privclients");
+		fw_privclients($dbh, $iface, $cfg->find('config/@path')."/$interfacedir/privclients", $commentchain);
 	}
 	print "Adding Policy Routing\n";
 	foreach my $interfacedir (@interfaces) {
 		-s $cfg->find('config/@path')."/$interfacedir/policy-routing" || next;
+		$commentchain=firewall_comment_add_key($dbh,"$interfacedir/policy-routing");
 		my $iface = $interfacedir;
 		$iface =~ s/^interface-//;
 		foreach my $line (values(@{$comment{$iface}})) {
 			print "  ".$line;
 		}
-		fw_policyrouting($iface, $cfg->find('config/@path')."/$interfacedir/policy-routing");
+		fw_policyrouting($dbh, $iface, $cfg->find('config/@path')."/$interfacedir/policy-routing", $commentchain);
 	}
 } elsif ($expand_hostgroups) {
 	foreach my $line (<>) {
 		$line =~ m/^#/ && next;
 		$line =~ m/^[ \t]*$/ && next;
 		if ($expand_portgroups) {
-			foreach my $line1 (split(/\n/,expand_hostgroup($line))) {
+			foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
 				$line1.="\n";
-				print expand_portgroup($line1);
+				print expand_portgroup({dbh=>$dbh, line=>$line1});
 			}
 		} else {
-			print expand_hostgroup($line);
+			print expand_hostgroup({dbh=>$dbh, line=>$line});
 		}
 	}
 } elsif ($expand_portgroups) {
 	foreach my $line (<>) {
 		$line =~ m/^#/ && next;
 		$line =~ m/^[ \t]*$/ && next;
-		print expand_portgroup($line);
+		print expand_portgroup({dbh=>$dbh, line=>$line});
 	}
 }
 
@@ -798,5 +919,7 @@ $FILE->close;
 $FILEfilter->close;
 $FILEnat->close;
 $FILEmangle->close;
+
+$dbh->disconnect or die $dbh->errstr;
 exit 0;
 # vim: ts=2 sw=2 sts=2 sr noet

@@ -6,9 +6,9 @@ DEBIAN_FULL_NAME=Adrian Reyer
 DEBIAN_EMAIL=are@lihas.de
 DEBIAN_HOMEPAGE=https://github.com/LinuxHaus/firewall-lihas/
 DESC_SHORT=LiHAS firewall with additional features: dns-support, portal-support
-DESC_LONG=LiHAS firewall with additional features:\n policy-routing\n dns-support\n captive portal with sms service integration\n traffic shaping
-DEBIAN_DEPENDS=iptables,perl (>= 5.12),liblog-log4perl-perl,libgetopt-mixed-perl,libxml-application-config-perl,libxml-xpath-perl,liblog-dispatch-perl
-DEBIAN_RECOMMENDS=liblog-dispatch-perl,libpoe-component-client-dns-perl,libpoe-component-client-ping-perl,libpoe-perl,libdbi-perl,libdbd-sqlite3-perl,libnet-server-perl,xmlstarlet,ipset,net-tools,libpoe-component-server-http-perl,libhttp-message-perl
+DESC_LONG=LiHAS firewall with additional features:\n policy-routing\n dns-support\n captive portal with sms service integration\n traffic shaping\n Rule generation comments
+DEBIAN_DEPENDS=iptables,libdbd-sqlite3-perl,libdbi-perl,libgetopt-mixed-perl,liblog-dispatch-perl,liblog-log4perl-perl,libxml-application-config-perl,libxml-xpath-perl,perl (>= 5.12)
+DEBIAN_RECOMMENDS=ipset,libhttp-message-perl,liblog-dispatch-perl,libnet-server-perl,libpoe-component-client-dns-perl,libpoe-component-client-ping-perl,libpoe-component-server-http-perl,libpoe-perl,net-tools,xmlstarlet
 ARCH=all
 
 CFGDIR=$(DESTDIR)/etc/$(APPNAME)

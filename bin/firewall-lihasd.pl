@@ -201,6 +201,8 @@ sub firewall_find_dnsnames {
 =head2 firewall_create_db
 
 Setup the db according to the config.xml
+TODO: Unify with firewall-lihas.pl
+
 =cut
 sub firewall_create_db {
   my ($kernel, $heap) = @_[KERNEL, HEAP];

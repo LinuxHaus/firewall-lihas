@@ -15,6 +15,7 @@
       <table name="portal_clienthistory">CREATE TABLE IF NOT EXISTS portal_clienthistory ( portalname TEXT NOT NULL, ip TEXT NOT NULL, mac INTEGER NOT NULL, start_date TEXT NOT NULL, end_date TEXT NOT NULL);</table>
       <table name="portal_users">CREATE TABLE IF NOT EXISTS portal_users ( id INTEGER PRIMARY KEY, name TEXT NOT NULL, pass TEXT NOT NULL, start_date TEXT NOT NULL, end_date TEXT NOT NULL, max_duration TEXT, max_clients TEXT, start_use TEXT);</table>
       <table name="portal_usershistory">CREATE TABLE IF NOT EXISTS portal_usershistory ( name TEXT NOT NULL, pass TEXT NOT NULL, start_date TEXT NOT NULL, end_date TEXT NOT NULL);</table>
+      <table name="fw_comments">CREATE TABLE IF NOT EXISTS fw_comments ( id INTEGER NOT NULL, file TEXT NOT NULL, comment TEXT);</table>
     </create>
   </database>
   <ipsets>

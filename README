@@ -3,9 +3,6 @@
 Das Konfigurationsverzeichnis ist /etc/firewall-lihas.d
 darin finden die relevanten Dinge statt.
 
-Also: 
-    cd /etc/firewall-lihas.d
-
 - es gibt pro Interface ein Verzeichnis nach dem Muster
     interface-NAME
     Interface-Aliase (z.B. eth0:0) werden nicht extra angelegt.
