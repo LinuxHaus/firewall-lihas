@@ -79,6 +79,8 @@ darin finden die relevanten Dinge statt.
     groups/portgroup-GROUPNAME
     definiert werden. 
     hostgroup-GROUPNAME bzw. portgroup-GROUPNAME steht dann anstelle des Ports/Hosts/Netzwerks
+    Beispiel:
+      192.0.2.0/28 192.0.2.128/28 any portgroup-GROUPNAME
 
   - interface-NAME/mark
     Ein Keyword pro Zeile, derzeit bekannt:
