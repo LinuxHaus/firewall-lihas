@@ -171,25 +171,6 @@ for iface in interface-*; do
   IPT_NAT ":dns-post-$iface -"
 done
 
-echo "Setting up IPSEC Spoof Protection"
-for iface in interface-*; do
-  iface=${iface#interface-}
-  if [ -e interface-$iface/network-ipsec ]; then
-    [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
-    cat interface-$iface/network-ipsec | sed '/^[ \t]*$/d; /^#/d' |
-    while read network; do
-      IPT_MANGLE "-A PREROUTING -p esp -j MARK --set-mark 8000/0000"
-      IPT_MANGLE "-A PREROUTING -p ah -j MARK --set-mark 8000/0000"
-      IPT_FILTER "-A in-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG"
-      IPT_FILTER "-A fwd-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG"
-      IPT_FILTER "-A in-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j DROP"
-      IPT_FILTER "-A fwd-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j DROP"
-    done
-  fi
-  IPT_NAT "-A PREROUTING -i $iface -j pre-$iface"
-  IPT_NAT "-A POSTROUTING -o $iface -j post-$iface"
-done
-
 echo "Policy Routing"
 portal_setup
 

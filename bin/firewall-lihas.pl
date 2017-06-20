@@ -189,10 +189,10 @@ sub parse_portgroup {
 			$line =~ m/^#/ && next;
 			$line =~ m/^[ \t]*$/ && next;
 			if ( $line =~ m/^(any|tcp|udp|icmp)[ \t]+portgroup-([^ ]*)(|[ \t])*(#.*|)$/ ) {
-				my $tmpport = $2;
+				my $tmpproto = $1;
 				my $tmpgrp = $2;
 				if (!defined $portgroup{$tmpgrp}{defined}) {
-					parse_portgroup({path=>$path, name=>$name, dbh=>$dbh});
+					parse_portgroup({path=>$path, name=>$tmpgrp, dbh=>$dbh});
 				} else {
 				}
 				foreach my $proto (keys(%{$portgroup{$tmpgrp}{proto}})) {
@@ -771,6 +771,38 @@ if ($fw_privclients) {
   opendir($dh, $cfg->find('config/@path')) || die "can't opendir ".$cfg->find('config/@path').": $!\n";
   @interfaces = grep { /^interface-/ && -d $cfg->find('config/@path')."/$_/" } readdir($dh);
 	closedir $dh;
+
+  print "Setting up IPSEC Spoof Protection\n";
+	foreach my $interfacedir (@interfaces) {
+		-s $cfg->find('config/@path')."/$interfacedir/network-ipsec" || next;
+		my $iface = $interfacedir;
+		$iface =~ s/^interface-//;
+		foreach my $line (values(@{$comment{$iface}})) {
+			print "  ".$line;
+		}
+    open(my $cf, "<", $cfg->find('config/@path')."/$interfacedir/network-ipsec") or die "cannot open < ".$cfg->find('config/@path')."/$interfacedir/network-ipsec".": $!";
+		foreach my $line (<$cf>) {
+			chomp($line);
+			$line =~ s/[ \t]*#.*//;
+			$line =~ m/^[ \t]*$/ && next;
+			print $FILEfilter "-A INPUT -s $line -i $iface -j in-$iface\n";
+			print $FILEfilter "-A OUTPUT -d $line -o $iface -j out-$iface\n";
+			print $FILEfilter "-A FORWARD -s $line -i $iface -j fwd-$iface\n";
+			print $FILEfilter "-A INPUT -s $line -i $iface -j dns-in-$iface\n";
+			print $FILEfilter "-A OUTPUT -d $line -o $iface -j dns-out-$iface\n";
+			print $FILEfilter "-A FORWARD -s $line -i $iface -j dns-fwd-$iface\n";
+			print $FILEmangle "-A PREROUTING -p esp -j MARK --set-mark 8000/0000\n";
+			print $FILEmangle "-A PREROUTING -p ah -j MARK --set-mark 8000/0000\n";
+			print $FILEmangle "-A in-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG\n";
+			print $FILEmangle "-A fwd-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG\n";
+			print $FILEmangle "-A in-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j DROP\n";
+			print $FILEmangle "-A fwd-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j DROP\n";
+		}
+		close($cf);
+		print $FILEnat "-A PREROUTING -i $iface -j pre-$iface\n";
+		print $FILEnat "-A POSTROUTING -o $iface -j post-$iface\n";
+	}
+
 	print "Setting up Chains\n";
 	foreach my $interfacedir (@interfaces) {
 		-s $cfg->find('config/@path')."/$interfacedir/network" || next;
