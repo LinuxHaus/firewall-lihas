@@ -1,7 +1,7 @@
 APPNAME=$(shell basename `pwd`)
 VERSION=$(shell git describe | sed 's/-/./g')
 
-UPLOADURL=http://ftp.lihas.de/cgi-bin/newpackage
+UPLOADURL=http://ftp.lihas.de/cgi-bin/newpackage-generic
 DEBIAN_FULL_NAME=Adrian Reyer
 DEBIAN_EMAIL=are@lihas.de
 DEBIAN_HOMEPAGE=https://github.com/LinuxHaus/firewall-lihas/
@@ -90,4 +90,4 @@ debian-dpkg:
 	dpkg-buildpackage -sa -rfakeroot -tc
 
 debian-upload:
-	curl -u `cat $(HOME)/.debianrepositoryauth` -v $(UPLOADURL) -F B1="Datei hochladen" -F uploaded_file=@../$(APPNAME)_$(VERSION)_$(ARCH).deb
+	curl -u `cat $(HOME)/.debianrepositoryauth` -v $(UPLOADURL) -F B1="Datei hochladen" -F uploaded_file=@../$(APPNAME)_$(VERSION)_$(ARCH).deb -F dists="wheezy,jessie,stretch"
