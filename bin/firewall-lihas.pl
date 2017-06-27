@@ -796,10 +796,10 @@ if ($fw_privclients) {
 			print $FILEfilter "-A FORWARD -s $line -i $iface -j dns-fwd-$iface\n";
 			print $FILEmangle "-A PREROUTING -p esp -j MARK --set-mark 8000/0000\n";
 			print $FILEmangle "-A PREROUTING -p ah -j MARK --set-mark 8000/0000\n";
-				print $FILEmangle "-A in-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG\n";
-				print $FILEmangle "-A fwd-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG\n";
-				print $FILEmangle "-A in-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j DROP\n";
-				print $FILEmangle "-A fwd-$iface -s $network -i $iface -m mark ! --mark 8000/8000 -j DROP\n";
+				print $FILEmangle "-A in-$iface -s $line -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG\n";
+				print $FILEmangle "-A fwd-$iface -s $line -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG\n";
+				print $FILEmangle "-A in-$iface -s $line -i $iface -m mark ! --mark 8000/8000 -j DROP\n";
+				print $FILEmangle "-A fwd-$iface -s $line -i $iface -m mark ! --mark 8000/8000 -j DROP\n";
 		}
 		close($cf);
 		print $FILEnat "-A PREROUTING -i $iface -j pre-$iface\n";
