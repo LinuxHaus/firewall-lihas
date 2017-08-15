@@ -586,7 +586,9 @@ sub fw_privclients {
 		  				$outline .= " --dport $dport";
 		  			}
 		  		}
-		  		if ( defined($oiface) && $oiface !~ /^$/ ) {
+		  		if ( defined($oiface) && $oiface !~ /^lo$/ ) {
+		  			print $FILEfilter "-A in-$iface $outline -j ACCEPT\n";
+		  		} elsif ( defined($oiface) && $oiface !~ /^$/ ) {
 		  			print $FILEfilter "-A fwd-$iface $outline -o $oiface -j ACCEPT\n";
 		  		} else {
 		  			print $FILEfilter "-A fwd-$iface $outline -j ACCEPT\n";
