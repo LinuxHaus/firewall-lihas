@@ -74,9 +74,10 @@ darin finden die relevanten Dinge statt.
     zurueckgibt, da die Regeln erzeugt werden
 
   - fuer privclients, dnat, snat, masquerade, nolog, reject koennen statt
-    Rechner-/Netzadressen/Ports auch Gruppen in
+    Rechner-/Netzadressen/Ports/Interfaces auch Gruppen in
     groups/hostgroup-GROUPNAME bzw.
     groups/portgroup-GROUPNAME
+    groups/ifacegroup-GROUPNAME
     definiert werden. 
     hostgroup-GROUPNAME bzw. portgroup-GROUPNAME steht dann anstelle des Ports/Hosts/Netzwerks
     Beispiel:

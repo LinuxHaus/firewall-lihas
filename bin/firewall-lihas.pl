@@ -93,6 +93,7 @@ my $cfg = new XML::Application::Config("LiHAS-Firewall","/etc/firewall.lihas.d/c
 
 our %hostgroup;
 our %portgroup;
+our %ifacegroup;
 our $nextcommentid=1;
 our $commentchain;
 
@@ -103,6 +104,43 @@ our $commentchain;
 =cut
 
 sub parse_policies {
+}
+
+=head2 parse_ifacegroup
+
+Goal: load every ifacegroup file only once
+
+=cut
+
+sub parse_ifacegroup {
+	my ($arg_ref) = @_;
+	my $path = $arg_ref->{path};
+	my $name = $arg_ref->{name};
+	my $dbh = $arg_ref->{dbh};
+	if (!defined ${$ifacegroup{$name}}{defined}) {
+		${$ifacegroup{$name}}{defined}=1;
+		${$ifacegroup{$name}}{ifaces}=[];
+		open(my $fh, "<", $path."/groups/ifacegroup-".$name) or die "cannot open < ".$path."/groups/ifacegroup-".$name.": $!";
+		$ifacegroup{$name}{comment} = firewall_comment_add_key($dbh,"groups/ifacegroup-".$name);
+		foreach my $line (<$fh>) {
+			chop $line;
+			$line =~ m/^#/ && next;
+			$line =~ m/^[ \t]*$/ && next;
+			if ( $line =~ m/^ifacegroup-([^ ]*)(|[ \t]*#.*)$/ ) {
+				if (!defined $ifacegroup{$1}{defined}) {
+					parse_ifacegroup({path=>$path, name=>$1, dbh=>$dbh});
+				} else {
+				}
+				foreach my $iface (values(@{$ifacegroup{$1}{ifaces}})) {
+					push(@{$ifacegroup{$name}{ifaces}}, $iface);
+				}
+			} elsif ( $line =~ m/^([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(|\/[0-9]+)|dns-[a-zA-Z0-9-\.]+)(\s.*|)$/){
+				my $iface = $1;
+				push(@{$ifacegroup{$name}{ifaces}}, $iface);
+			}
+		}
+		close($fh);
+	}
 }
 
 =head2 parse_hostgroup
@@ -140,6 +178,36 @@ sub parse_hostgroup {
 		}
 		close($fh);
 	}
+}
+
+=head2 expand_ifacegroup
+
+Goal: load every ifacegroup file only once
+=cut
+
+sub expand_ifacegroup {
+	my ($arg_ref) = @_;
+	my $line = $arg_ref->{line};
+	my $dbh = $arg_ref->{dbh};
+	my $replaceline='';
+	my $resultline='';
+	my $name = $line;
+	if ( $line =~ m/ifacegroup-([a-zA-Z0-9_\.-]+)\b/ ) {
+		my $name = $1;
+		$commentchain .= " " . firewall_comment_add_key($dbh,"groups/".$name);
+		if (!defined ${$ifacegroup{$name}}{defined}) {
+			WARN "Ifacegroup $name undefined, '$line' dropped\n";
+			$line = "";
+		} else {
+			foreach my $replacement (values(@{${$ifacegroup{$name}}{ifaces}})) {
+				$replaceline = $line;
+				$replaceline =~ s/ifacegroup-$name\b/$replacement/;
+				$resultline .= expand_ifacegroup({dbh=>$dbh, line=>$replaceline});
+			}
+			$line = $resultline;
+		}
+	}
+	return $line;
 }
 
 =head2 expand_hostgroup
@@ -278,34 +346,36 @@ sub fw_nonat {
 			$commentchain .= " " . firewall_comment_add_key($dbh,"$1");
 			fw_nonat($dbh, $iface, $cfg->find('config/@path')."/$1",$commentchain);
 		} else {
-		  foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
-		  	foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
-					my ($snet, $dnet, $proto, $dport) = split(/[\s]+/, $line2);
-					$outline = "-A post-$iface";
-					if ( $do_comment ) {
-						$outline .= " -m comment --comment \"$commentchain\"";
+			foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
+				foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
+					foreach my $line3 (split(/\n/,expand_ifacegroup({dbh=>$dbh, line=>$line2}))) {
+						my ($snet, $dnet, $proto, $dport) = split(/[\s]+/, $line3);
+						$outline = "-A post-$iface";
+						if ( $do_comment ) {
+							$outline .= " -m comment --comment \"$commentchain\"";
+						}
+						if ( $snet =~ m/ipset-(.*)/ ) {
+							$outline .= " -m set --match-set $1 src";
+						} else {
+							$outline .= " -s $snet";
+						}
+						if ( $dnet =~ m/ipset-(.*)/ ) {
+							$outline .= " -m set --match-set $1 dst";
+						} else {
+							$outline .= " -d $dnet";
+						}
+						if ( $dport =~ /^0$/ ) {
+							print $FILEnat "$outline -p $proto -j ACCEPT\n";
+						} else {
+							if ( $proto =~ /^icmp$/ ) {
+								print $FILEnat "$outline -p $proto --icmp-type $dport -j ACCEPT\n";
+							} else {
+								print $FILEnat "$outline -p $proto --dport $dport -j ACCEPT\n";
+							}
+						}
 					}
-					if ( $snet =~ m/ipset-(.*)/ ) {
-						$outline .= " -m set --match-set $1 src";
-					} else {
-						$outline .= " -s $snet";
-					}
-					if ( $dnet =~ m/ipset-(.*)/ ) {
-						$outline .= " -m set --match-set $1 dst";
-					} else {
-						$outline .= " -d $dnet";
-					}
-			  	if ( $dport =~ /^0$/ ) {
-			  	  print $FILEnat "$outline -p $proto -j ACCEPT\n";
-			  	} else {
-			  	  if ( $proto =~ /^icmp$/ ) {
-			  	    print $FILEnat "$outline -p $proto --icmp-type $dport -j ACCEPT\n";
-			  	  } else {
-			  	    print $FILEnat "$outline -p $proto --dport $dport -j ACCEPT\n";
-			  	  }
-			  	}
-		  	}
-		  }
+				}
+			}
 		}
 	}
 	close $nonat;
@@ -330,44 +400,46 @@ sub fw_dnat {
 			fw_dnat($dbh, $iface, $cfg->find('config/@path')."/$1", $commentchain);
 		} else {
 		  foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
-		  	foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
-		  		my ($dnet, $mnet, $proto, $dport, $ndport) = split(/[\s]+/, $line2);
-					$outline = "-A pre-$iface";
-					if ( $do_comment ) {
-						$outline .= " -m comment --comment \"$commentchain\"";
-					}
-					if ($dnet =~ /^ACCEPT$/) {
-						if ( $mnet =~ m/ipset-(.*)/ ) {
-							$outline .= " -m set --match-set $1 src";
-						} else {
-							$outline .= " -s $mnet";
+				foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
+					foreach my $line3 (split(/\n/,expand_ifacegroup({dbh=>$dbh, line=>$line2}))) {
+						my ($dnet, $mnet, $proto, $dport, $ndport) = split(/[\s]+/, $line3);
+						$outline = "-A pre-$iface";
+						if ( $do_comment ) {
+							$outline .= " -m comment --comment \"$commentchain\"";
 						}
-						if ($dport =~ /^0$/ ) {
-							print $FILEnat "$outline -p $proto -j ACCEPT\n";
-						} else {
-							if ( $proto =~ /^icmp$/ ) {
-								print $FILEnat "$outline -p $proto --icmp-type $dport -j ACCEPT\n";
+						if ($dnet =~ /^ACCEPT$/) {
+							if ( $mnet =~ m/ipset-(.*)/ ) {
+								$outline .= " -m set --match-set $1 src";
 							} else {
-								print $FILEnat "$outline -p $proto --dport $dport -j ACCEPT\n";
+								$outline .= " -s $mnet";
 							}
-						}
-					} else {
-						if ( $dnet =~ m/ipset-(.*)/ ) {
-							$outline .= " -m set --match-set $1 dst";
+							if ($dport =~ /^0$/ ) {
+								print $FILEnat "$outline -p $proto -j ACCEPT\n";
+							} else {
+								if ( $proto =~ /^icmp$/ ) {
+									print $FILEnat "$outline -p $proto --icmp-type $dport -j ACCEPT\n";
+								} else {
+									print $FILEnat "$outline -p $proto --dport $dport -j ACCEPT\n";
+								}
+							}
 						} else {
-							$outline .= " -d $dnet";
-						}
-			      if ( $dport =~ /^0$/ ) {
-			        print $FILEnat "$outline -p $proto -j DNAT --to-destination $mnet\n";
-			      } else {
-							$ndport =~ s/:/-/g;
-			        if ( $proto =~ /^icmp$/ ) {
-			          print $FILEnat "$outline -p $proto --icmp-type $dport -j DNAT --to-destination $mnet:$ndport\n";
-			        } else {
-			          print $FILEnat "$outline -p $proto --dport $dport -j DNAT --to-destination $mnet:$ndport\n";
-			        }
-			      }
-		  		}
+							if ( $dnet =~ m/ipset-(.*)/ ) {
+								$outline .= " -m set --match-set $1 dst";
+							} else {
+								$outline .= " -d $dnet";
+							}
+							if ( $dport =~ /^0$/ ) {
+								print $FILEnat "$outline -p $proto -j DNAT --to-destination $mnet\n";
+							} else {
+								$ndport =~ s/:/-/g;
+								if ( $proto =~ /^icmp$/ ) {
+									print $FILEnat "$outline -p $proto --icmp-type $dport -j DNAT --to-destination $mnet:$ndport\n";
+								} else {
+									print $FILEnat "$outline -p $proto --dport $dport -j DNAT --to-destination $mnet:$ndport\n";
+								}
+							}
+		  			}
+					}
 		  	}
 		  }
 		}
@@ -395,39 +467,41 @@ sub fw_snat {
 		} else {
 			foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
 				foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
-					my ($snet, $mnet, $proto, $dport) = split(/[\s]+/, $line2);
-					$outline = "-A post-$iface";
-					if ( $do_comment ) {
-						$outline .= " -m comment --comment \"$commentchain\"";
-					}
-					if ($snet =~ /^ACCEPT$/) {
-						if ( $mnet =~ m/ipset-(.*)/ ) {
-							$outline .= " -m set --match-set $1 src";
-						} else {
-							$outline .= " -s $mnet";
+					foreach my $line3 (split(/\n/,expand_ifacegroup({dbh=>$dbh, line=>$line2}))) {
+						my ($snet, $mnet, $proto, $dport) = split(/[\s]+/, $line3);
+						$outline = "-A post-$iface";
+						if ( $do_comment ) {
+							$outline .= " -m comment --comment \"$commentchain\"";
 						}
-						if ($dport =~ /^0$/ ) {
-							print $FILEnat "$outline -p $proto -j ACCEPT\n";
-						} else {
-							if ( $proto =~ /^icmp$/ ) {
-								print $FILEnat "$outline -p $proto --icmp-type $dport -j ACCEPT\n";
+						if ($snet =~ /^ACCEPT$/) {
+							if ( $mnet =~ m/ipset-(.*)/ ) {
+								$outline .= " -m set --match-set $1 src";
 							} else {
-								print $FILEnat "$outline -p $proto --dport $dport -j ACCEPT\n";
+								$outline .= " -s $mnet";
 							}
-						}
-					} else {
-						if ( $snet =~ m/ipset-(.*)/ ) {
-							$outline .= " -m set --match-set $1 src";
-						} else {
-							$outline .= " -s $snet";
-						}
-						if ( $dport =~ /^0$/ ) {
-							print $FILEnat "$outline -p $proto -j SNAT --to-source $mnet\n";
-						} else {
-							if ( $proto =~ /^icmp$/ ) {
-								print $FILEnat "$outline -p $proto --icmp-type $dport -j SNAT --to-source $mnet\n";
+							if ($dport =~ /^0$/ ) {
+								print $FILEnat "$outline -p $proto -j ACCEPT\n";
 							} else {
-								print $FILEnat "$outline -p $proto --dport $dport -j SNAT --to-source $mnet\n";
+								if ( $proto =~ /^icmp$/ ) {
+									print $FILEnat "$outline -p $proto --icmp-type $dport -j ACCEPT\n";
+								} else {
+									print $FILEnat "$outline -p $proto --dport $dport -j ACCEPT\n";
+								}
+							}
+						} else {
+							if ( $snet =~ m/ipset-(.*)/ ) {
+								$outline .= " -m set --match-set $1 src";
+							} else {
+								$outline .= " -s $snet";
+							}
+							if ( $dport =~ /^0$/ ) {
+								print $FILEnat "$outline -p $proto -j SNAT --to-source $mnet\n";
+							} else {
+								if ( $proto =~ /^icmp$/ ) {
+									print $FILEnat "$outline -p $proto --icmp-type $dport -j SNAT --to-source $mnet\n";
+								} else {
+									print $FILEnat "$outline -p $proto --dport $dport -j SNAT --to-source $mnet\n";
+								}
 							}
 						}
 					}
@@ -458,29 +532,31 @@ sub fw_masquerade {
 		} else {
 		  foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
 		  	foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
-					$outline = "-A post-$iface";
-					if ( $do_comment ) {
-						$outline .= " -m comment --comment \"$commentchain\"";
-					}
-		  		my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line2);
-					if ( $snet =~ m/ipset-(.*)/ ) {
-						$outline .= " -m set --match-set $1 src";
-					} else {
-						$outline .= " -p $proto -s $snet";
-					}
-		  		if ( $dport !~ /^0$/ ) {
-		  			if ( $proto =~ /^icmp$/ ) {
-		  				$outline .= " -p $proto --icmp-type $dport";
+					foreach my $line3 (split(/\n/,expand_ifacegroup({dbh=>$dbh, line=>$line2}))) {
+						$outline = "-A post-$iface";
+						if ( $do_comment ) {
+							$outline .= " -m comment --comment \"$commentchain\"";
+						}
+		  			my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line3);
+						if ( $snet =~ m/ipset-(.*)/ ) {
+							$outline .= " -m set --match-set $1 src";
+						} else {
+							$outline .= " -p $proto -s $snet";
+						}
+		  			if ( $dport !~ /^0$/ ) {
+		  				if ( $proto =~ /^icmp$/ ) {
+		  					$outline .= " -p $proto --icmp-type $dport";
+		  				} else {
+		  					$outline .= " -p $proto --dport $dport";
+		  				}
+		  			}
+		  			if ( defined($oiface) && $oiface !~ /^$/ ) {
+		  				print $FILEnat "$outline -o $oiface -j MASQUERADE\n";
 		  			} else {
-		  				$outline .= " -p $proto --dport $dport";
+		  				print $FILEnat "$outline -j MASQUERADE\n";
 		  			}
 		  		}
-		  		if ( defined($oiface) && $oiface !~ /^$/ ) {
-		  			print $FILEnat "$outline -o $oiface -j MASQUERADE\n";
-		  		} else {
-		  			print $FILEnat "$outline -j MASQUERADE\n";
-		  		}
-		  	}
+				}
 		  }
 		}
 	}
@@ -505,39 +581,41 @@ sub fw_rejectclients {
 			$commentchain .= " " . firewall_comment_add_key($dbh,"$1");
 			fw_rejectclients($dbh, $iface, $cfg->find('config/@path')."/$1", $commentchain);
 		} else {
-		  foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
-		  	foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
-		  		$outline = "$CONNSTATE NEW";
-					if ( $do_comment ) {
-						$outline .= " -m comment --comment \"$commentchain\"";
+			foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
+				foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
+					foreach my $line3 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line2}))) {
+						$outline = "$CONNSTATE NEW";
+						if ( $do_comment ) {
+							$outline .= " -m comment --comment \"$commentchain\"";
+						}
+						my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line3);
+						if ( $snet =~ m/ipset-(.*)/ ) {
+							$outline .= " -m set --match-set $1 src";
+						} else {
+							$outline .= " -s $snet";
+						}
+						if ( $dnet =~ m/ipset-(.*)/ ) {
+							$outline .= " -m set --match-set $1 dst";
+						} else {
+							$outline .= " -d $dnet";
+						}
+						$outline .= " -p $proto";
+						if ( $dport !~ /^0$/ ) {
+							if ( $proto =~ /^icmp$/ ) {
+								$outline .= " --icmp-type $dport";
+							} else {
+								$outline .= " --dport $dport";
+							}
+						}
+						if ( defined($oiface) && $oiface !~ /^$/ ) {
+							print $FILEfilter "-A fwd-$iface $outline -o $oiface -j REJECT\n";
+						} else {
+							print $FILEfilter "-A fwd-$iface $outline -j REJECT\n";
+						  print $FILEfilter "-A in-$iface $outline -j REJECT\n";
+						}
 					}
-		  		my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line2);
-					if ( $snet =~ m/ipset-(.*)/ ) {
-						$outline .= " -m set --match-set $1 src";
-					} else {
-						$outline .= " -s $snet";
-					}
-					if ( $dnet =~ m/ipset-(.*)/ ) {
-						$outline .= " -m set --match-set $1 dst";
-					} else {
-						$outline .= " -d $dnet";
-					}
-					$outline .= " -p $proto";
-		  		if ( $dport !~ /^0$/ ) {
-		  			if ( $proto =~ /^icmp$/ ) {
-		  				$outline .= " --icmp-type $dport";
-		  			} else {
-		  				$outline .= " --dport $dport";
-		  			}
-		  		}
-		  		if ( defined($oiface) && $oiface !~ /^$/ ) {
-		  			print $FILEfilter "-A fwd-$iface $outline -o $oiface -j REJECT\n";
-		  		} else {
-		  			print $FILEfilter "-A fwd-$iface $outline -j REJECT\n";
-		  		  print $FILEfilter "-A in-$iface $outline -j REJECT\n";
-		  		}
-		  	}
-		  }
+				}
+			}
 		}
 	}
 	close $rejectclients;
@@ -563,38 +641,40 @@ sub fw_privclients {
 		} else {
 		  foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
 		  	foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
-		  		my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line2);
-		  		$outline = "$CONNSTATE NEW";
-					if ( $do_comment ) {
-						$outline .= " -m comment --comment \"$commentchain\"";
-					}
-					if ( $snet =~ m/ipset-(.*)/ ) {
-						$outline .= " -m set --match-set $1 src";
-					} else {
-						$outline .= " -s $snet";
-					}
-					if ( $dnet =~ m/ipset-(.*)/ ) {
-						$outline .= " -m set --match-set $1 dst";
-					} else {
-						$outline .= " -d $dnet";
-					}
-					$outline .= " -p $proto";
-		  		if ( $dport !~ /^0$/ ) {
-		  			if ( $proto =~ /^icmp$/ ) {
-		  				$outline .= " --icmp-type $dport";
+					foreach my $line3 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line2}))) {
+		  			my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line3);
+		  			$outline = "$CONNSTATE NEW";
+						if ( $do_comment ) {
+							$outline .= " -m comment --comment \"$commentchain\"";
+						}
+						if ( $snet =~ m/ipset-(.*)/ ) {
+							$outline .= " -m set --match-set $1 src";
+						} else {
+							$outline .= " -s $snet";
+						}
+						if ( $dnet =~ m/ipset-(.*)/ ) {
+							$outline .= " -m set --match-set $1 dst";
+						} else {
+							$outline .= " -d $dnet";
+						}
+						$outline .= " -p $proto";
+		  			if ( $dport !~ /^0$/ ) {
+		  				if ( $proto =~ /^icmp$/ ) {
+		  					$outline .= " --icmp-type $dport";
+		  				} else {
+		  					$outline .= " --dport $dport";
+		  				}
+		  			}
+		  			if ( defined($oiface) && $oiface !~ /^lo$/ ) {
+		  				print $FILEfilter "-A in-$iface $outline -j ACCEPT\n";
+		  			} elsif ( defined($oiface) && $oiface !~ /^$/ ) {
+		  				print $FILEfilter "-A fwd-$iface $outline -o $oiface -j ACCEPT\n";
 		  			} else {
-		  				$outline .= " --dport $dport";
+		  				print $FILEfilter "-A fwd-$iface $outline -j ACCEPT\n";
+		  			  print $FILEfilter "-A in-$iface $outline -j ACCEPT\n";
 		  			}
 		  		}
-		  		if ( defined($oiface) && $oiface !~ /^lo$/ ) {
-		  			print $FILEfilter "-A in-$iface $outline -j ACCEPT\n";
-		  		} elsif ( defined($oiface) && $oiface !~ /^$/ ) {
-		  			print $FILEfilter "-A fwd-$iface $outline -o $oiface -j ACCEPT\n";
-		  		} else {
-		  			print $FILEfilter "-A fwd-$iface $outline -j ACCEPT\n";
-		  		  print $FILEfilter "-A in-$iface $outline -j ACCEPT\n";
-		  		}
-		  	}
+				}
 		  }
 		}
 	}
@@ -619,36 +699,38 @@ sub fw_policyrouting {
 			$commentchain .= " " . firewall_comment_add_key($dbh,"$1");
 			fw_policyrouting($dbh, $iface, $cfg->find('config/@path')."/$1", $commentchain);
 		} else {
-		  foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
-		  	foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
-		  		my ($snet, $dnet, $proto, $dport, $policy) = split(/[\s]+/, $line2);
-					$outline = "";
-					if ( $do_comment ) {
-						$outline .= " -m comment --comment \"$commentchain\"";
+			foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
+				foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
+					foreach my $line3 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line2}))) {
+						my ($snet, $dnet, $proto, $dport, $policy) = split(/[\s]+/, $line3);
+						$outline = "";
+						if ( $do_comment ) {
+							$outline .= " -m comment --comment \"$commentchain\"";
+						}
+						if ( $snet =~ m/ipset-(.*)/ ) {
+							$outline .= " -m set --match-set $1 src";
+						} else {
+							$outline .= " -s $snet";
+						}
+						if ( $dnet =~ m/ipset-(.*)/ ) {
+							$outline .= " -m set --match-set $1 dst";
+						} else {
+							$outline .= " -d $dnet";
+						}
+						$outline .= " -p $proto";
+						if ( $dport !~ /^0$/ ) {
+							if ( $proto =~ /^icmp$/ ) {
+								$outline .= " --icmp-type $dport";
+							} else {
+								$outline .= " --dport $dport";
+							}
+						}
+						$outline .= " -j MARK --set-mark $policymark{$policy}";
+						print $FILEmangle "-A OUTPUT $outline\n";
+						print $FILEmangle "-A PREROUTING $outline\n";
 					}
-					if ( $snet =~ m/ipset-(.*)/ ) {
-						$outline .= " -m set --match-set $1 src";
-					} else {
-						$outline .= " -s $snet";
-					}
-					if ( $dnet =~ m/ipset-(.*)/ ) {
-						$outline .= " -m set --match-set $1 dst";
-					} else {
-						$outline .= " -d $dnet";
-					}
-					$outline .= " -p $proto";
-		  		if ( $dport !~ /^0$/ ) {
-		  			if ( $proto =~ /^icmp$/ ) {
-		  				$outline .= " --icmp-type $dport";
-		  			} else {
-		  				$outline .= " --dport $dport";
-		  			}
-		  		}
-					$outline .= " -j MARK --set-mark $policymark{$policy}";
-		  		print $FILEmangle "-A OUTPUT $outline\n";
-		  		print $FILEmangle "-A PREROUTING $outline\n";
-		  	}
-		  }
+				}
+			}
 		}
 	}
 	close $policyrouting;
@@ -736,9 +818,18 @@ if ($expand_portgroups || $fw_privclients) {
 }
 my %comment;
 if ($fw_privclients) {
-	opendir(my $dh, $cfg->find('config/@path')) || die "can't opendir ".$cfg->find('config/@path').": $!\n";
+	opendir(my $dh, $cfg->find('config/@path')."/groups") || die "can't opendir ".$cfg->find('config/@path')."/groups: $!\n";
+	my @files = grep { /^ifacegroup-/ && -f $cfg->find('config/@path')."/groups/$_" } readdir($dh);
+	closedir $dh;
+	my $path = $cfg->find('config/@path');
+	foreach my $file (@files) {
+		my $name = $file;
+		$name =~ s/^ifacegroup-//;
+		parse_ifacegroup({path=>$path, name=>$name, dbh=>$dbh});
+	}
+	opendir($dh, $cfg->find('config/@path')) || die "can't opendir ".$cfg->find('config/@path').": $!\n";
 	my @interfaces = grep { /^interface-/ && -d $cfg->find('config/@path')."/$_/" } readdir($dh);
-  foreach my $interfacedir (@interfaces) {
+	foreach my $interfacedir (@interfaces) {
 		-s $cfg->find('config/@path')."/$interfacedir/comment" || next;
 		my $iface = $interfacedir;
 		$iface =~ s/^interface-//;
