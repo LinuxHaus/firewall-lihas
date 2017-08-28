@@ -95,7 +95,7 @@ our %hostgroup;
 our %portgroup;
 our %ifacegroup;
 our $nextcommentid=1;
-our $commentchain;
+my $commentchain;
 
 =head1 Functions
 
@@ -335,7 +335,7 @@ sub fw_nonat {
 	my $dbh = $_[0];
 	my $iface = $_[1];
 	my $file = $_[2];
-	$commentchain = $_[3];
+	my $commentchain = $_[3];
 	my $outline = "";
 	open(my $nonat, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$nonat>) {
@@ -388,7 +388,7 @@ sub fw_dnat {
 	my $dbh = $_[0];
 	my $iface = $_[1];
 	my $file = $_[2];
-	$commentchain = $_[3];
+	my $commentchain = $_[3];
 	my $outline = "";
 	open(my $dnat, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$dnat>) {
@@ -454,7 +454,7 @@ sub fw_snat {
 	my $dbh = $_[0];
 	my $iface = $_[1];
 	my $file = $_[2];
-	$commentchain = $_[3];
+	my $commentchain = $_[3];
 	my $outline = "";
 	open(my $snat, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$snat>) {
@@ -519,7 +519,7 @@ sub fw_masquerade {
 	my $dbh = $_[0];
 	my $iface = $_[1];
 	my $file = $_[2];
-	$commentchain = $_[3];
+	my $commentchain = $_[3];
 	my $outline = "";
 	open(my $masquerade, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$masquerade>) {
@@ -570,7 +570,7 @@ sub fw_rejectclients {
 	my $dbh = $_[0];
 	my $iface = $_[1];
 	my $file = $_[2];
-	$commentchain = $_[3];
+	my $commentchain = $_[3];
 	my $outline = "";
 	open(my $rejectclients, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$rejectclients>) {
@@ -628,7 +628,7 @@ sub fw_privclients {
 	my $dbh = $_[0];
 	my $iface = $_[1];
 	my $file = $_[2];
-	$commentchain = $_[3];
+	my $commentchain = $_[3];
 	my $outline = "";
 	open(my $privclients, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$privclients>) {
@@ -688,7 +688,7 @@ sub fw_policyrouting {
 	my $dbh = $_[0];
 	my $iface = $_[1];
 	my $file = $_[2];
-	$commentchain = $_[3];
+	my $commentchain = $_[3];
 	my $outline = "";
 	open(my $policyrouting, "<", $file) or die "cannot open < $file: $!";
 	foreach my $line (<$policyrouting>) {
@@ -889,10 +889,10 @@ if ($fw_privclients) {
 			print $FILEfilter "-A FORWARD -s $line -i $iface -j dns-fwd-$iface\n";
 			print $FILEmangle "-A PREROUTING -p esp -j MARK --set-mark 8000/0000\n";
 			print $FILEmangle "-A PREROUTING -p ah -j MARK --set-mark 8000/0000\n";
-				print $FILEmangle "-A in-$iface -s $line -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG\n";
-				print $FILEmangle "-A fwd-$iface -s $line -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG\n";
-				print $FILEmangle "-A in-$iface -s $line -i $iface -m mark ! --mark 8000/8000 -j DROP\n";
-				print $FILEmangle "-A fwd-$iface -s $line -i $iface -m mark ! --mark 8000/8000 -j DROP\n";
+				print $FILEfilter "-A in-$iface -s $line -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG\n";
+				print $FILEfilter "-A fwd-$iface -s $line -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG\n";
+				print $FILEfilter "-A in-$iface -s $line -i $iface -m mark ! --mark 8000/8000 -j DROP\n";
+				print $FILEfilter "-A fwd-$iface -s $line -i $iface -m mark ! --mark 8000/8000 -j DROP\n";
 		}
 		close($cf);
 		print $FILEnat "-A PREROUTING -i $iface -j pre-$iface\n";
