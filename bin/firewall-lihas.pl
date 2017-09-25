@@ -541,7 +541,7 @@ sub fw_masquerade {
 						if ( $snet =~ m/ipset-(.*)/ ) {
 							$outline .= " -m set --match-set $1 src";
 						} else {
-							$outline .= " -p $proto -s $snet";
+							$outline .= " -s $snet";
 						}
 		  			if ( $dport !~ /^0$/ ) {
 		  				if ( $proto =~ /^icmp$/ ) {
