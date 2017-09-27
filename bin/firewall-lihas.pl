@@ -350,7 +350,7 @@ sub fw_nonat {
 				foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
 					foreach my $line3 (split(/\n/,expand_ifacegroup({dbh=>$dbh, line=>$line2}))) {
 						my ($snet, $dnet, $proto, $dport) = split(/[\s]+/, $line3);
-						$outline = "-A post-$iface";
+						$outline = "";
 						if ( $do_comment ) {
 							$outline .= " -m comment --comment \"$commentchain\"";
 						}
@@ -368,11 +368,13 @@ sub fw_nonat {
 							print $FILEnat "$outline -p $proto -j ACCEPT\n";
 						} else {
 							if ( $proto =~ /^icmp$/ ) {
-								print $FILEnat "$outline -p $proto --icmp-type $dport -j ACCEPT\n";
+								$outline .= " -p $proto --icmp-type $dport";
 							} else {
-								print $FILEnat "$outline -p $proto --dport $dport -j ACCEPT\n";
+								$outline .= " -p $proto --dport $dport";
 							}
 						}
+						print $FILEnat "-A post-$iface $outline -j ACCEPT\n";
+						print $FILEnat "-A pre-$iface $outline -j ACCEPT\n";
 					}
 				}
 			}
