@@ -365,7 +365,7 @@ sub fw_nonat {
 							$outline .= " -d $dnet";
 						}
 						if ( $dport =~ /^0$/ ) {
-							print $FILEnat "$outline -p $proto -j ACCEPT\n";
+							$outline .= " -p $proto";
 						} else {
 							if ( $proto =~ /^icmp$/ ) {
 								$outline .= " -p $proto --icmp-type $dport";
