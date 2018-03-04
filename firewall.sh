@@ -28,6 +28,8 @@ LOGSTARTUP=$TMPDIR/firewall-lihas-startup.log
 # Default values
 # TARGETLOG: LOG-Chain, mostly useful: LOG ULOG
 TARGETLOG=LOG
+# POLICYMETHOD: static bird
+POLICYMETHOD=static
 
 # Read configuration variable file if it is present
 [ -r /etc/default/$NAME ] && . /etc/default/$NAME
