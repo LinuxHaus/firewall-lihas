@@ -15,11 +15,15 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-# Requirements: libxml-application-config-perl liblog-log4perl liblog-dispatch-perl
+# Requirements: libxml-application-config-perl liblog-log4perl-perl liblog-dispatch-perl
 
 BEGIN {
   use Net::Server::Daemonize qw(daemonize check_pid_file unlink_pid_file);    # or any other daemonization module
-  daemonize(root => root => '/var/run/firewall-lihasd.pid');
+  daemonize(
+		'root',
+		'root',
+		'/var/run/firewall-lihasd.pid'
+	);
 }
 
 use Log::Log4perl qw(:easy);
@@ -42,11 +46,28 @@ $SIG{__WARN__} = sub {
   WARN @_;
 };
 
+sub try_load {
+  my $mod = shift;
+  eval("use $mod");
+  if ($@) {
+    #print "\$@ = $@\n";
+    return(0);
+  } else {
+    return(1);
+  }
+}
+
 use XML::Application::Config;
 use POE qw(Component::Client::Ping Component::Client::DNS );
 # use Test::More skip_all => "Derzeit keine Tests";
 use lib "/etc/firewall.lihas.d/lib";
-use POE::Component::Server::HTTP;
+my $module = 'POE::Component::Server::HTTP';
+my $have_httpd=0;
+if (try_load($module)) {
+	$have_httpd = 1;
+} else {
+	$have_httpd = 0;
+}
 use HTTP::Status qw(:constants);
 use LiHAS::Firewall::Ping;
 use LiHAS::Firewall::DNS;
@@ -60,7 +81,12 @@ if (defined $cfg->find('feature/connectivity/@enabled') && ( $cfg->find('feature
 } else { $feature{'connectivity'}=0; }
 
 if ($cfg->find('feature/portal/@enabled') !~ /^(|0)$/ ) {
-	eval { require LiHAS::Firewall::Portal }; if ($@) { WARN "No portal support: $@"; $feature{'portal'}=0; } else { $feature{'portal'}=1; }
+	if ($have_httpd) {
+		eval { require LiHAS::Firewall::Portal }; if ($@) { WARN "No portal support: $@"; $feature{'portal'}=0; } else { $feature{'portal'}=1; }
+	} else {
+		WARN "Portal support wanted, but POE::Component::Server::HTTP not available";
+		WARN "Either install POE::Component::Server::HTTP or disable portal support with feature/portal/@enabled=0 in config.xml";
+	}
 } else { $feature{'portal'}=0; }
 
 =head1 Functions
@@ -342,25 +368,27 @@ our $mainsession = POE::Session->create(
   }
 )->ID;
 
-WARN "http_redirector pre";
-my $aliases = POE::Component::Server::HTTP->new(
-  Port => 81,
-  ContentHandler => {
-    '/' => \&handler1,
-  },
-  Headers => { Server => 'Portal Redirection Server' },
-);
-sub handler1 {
-    my ($request, $response) = @_;
-    $response->code(HTTP_TEMPORARY_REDIRECT);
-    $response->header(
-      Location => "http://portalserver.lan:82/cgi-bin/portal-cgi.pl?redirect_url=".uri_escape($request->header('Server')."/".$request->uri),
-      Expires => "Sat, 01 Jan 2000 00:00:00 GMT",
-      );
-    return RC_OK;
+if ($have_httpd) {
+  WARN "http_redirector pre";
+  my $aliases = POE::Component::Server::HTTP->new(
+    Port => 81,
+    ContentHandler => {
+      '/' => \&handler1,
+    },
+    Headers => { Server => 'Portal Redirection Server' },
+  );
+  sub handler1 {
+      my ($request, $response) = @_;
+      $response->code(HTTP_TEMPORARY_REDIRECT);
+      $response->header(
+        Location => "http://portalserver.lan:82/cgi-bin/portal-cgi.pl?redirect_url=".uri_escape($request->header('Server')."/".$request->uri),
+        Expires => "Sat, 01 Jan 2000 00:00:00 GMT",
+        );
+      return 0;
+  }
+  #POE::Kernel->call($aliases->{httpd}, "shutdown");
+  #POE::Kernel->call($aliases->{tcp}, "shutdown");
 }
-#POE::Kernel->call($aliases->{httpd}, "shutdown");
-#POE::Kernel->call($aliases->{tcp}, "shutdown");
 
 DEBUG "kernel-run\n";
 POE::Kernel->run();
