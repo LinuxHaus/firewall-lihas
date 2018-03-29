@@ -1080,7 +1080,7 @@ if ($fw_privclients) {
 		foreach my $line (values(@{$comment{$iface}})) {
 			print "  ".$line;
 		}
-		fw_nologclients($dbh, $iface, $cfg->find('config/@path')."/$interfacedir/nologclients", $commentchain);
+		fw_nologclients($dbh, $iface, $cfg->find('config/@path')."/$interfacedir/nolog", $commentchain);
 	}
 	print "Adding Policy Routing\n";
 	foreach my $interfacedir (@interfaces) {
