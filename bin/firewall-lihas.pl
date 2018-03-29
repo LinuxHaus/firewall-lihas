@@ -565,6 +565,64 @@ sub fw_masquerade {
 	close $masquerade;
 }
 
+=head2 fw_nologclients
+=cut
+
+sub fw_nologclients {
+	my $dbh = $_[0];
+	my $iface = $_[1];
+	my $file = $_[2];
+	my $commentchain = $_[3];
+	my $outline = "";
+	open(my $nologclients, "<", $file) or die "cannot open < $file: $!";
+	foreach my $line (<$nologclients>) {
+		$line =~ m/^#/ && next;
+		$line =~ m/^[ \t]*$/ && next;
+		$line =~ s/#.*//;
+		if ($line =~ /^include[\s]+([^\s]+)/) {
+			$commentchain .= " " . firewall_comment_add_key($dbh,"$1");
+			fw_nologclients($dbh, $iface, $cfg->find('config/@path')."/$1", $commentchain);
+		} else {
+			foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
+				foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
+					foreach my $line3 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line2}))) {
+						$outline = "$CONNSTATE NEW";
+						if ( $do_comment ) {
+							$outline .= " -m comment --comment \"$commentchain\"";
+						}
+						my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line3);
+						if ( $snet =~ m/ipset-(.*)/ ) {
+							$outline .= " -m set --match-set $1 src";
+						} else {
+							$outline .= " -s $snet";
+						}
+						if ( $dnet =~ m/ipset-(.*)/ ) {
+							$outline .= " -m set --match-set $1 dst";
+						} else {
+							$outline .= " -d $dnet";
+						}
+						$outline .= " -p $proto";
+						if ( $dport !~ /^0$/ ) {
+							if ( $proto =~ /^icmp$/ ) {
+								$outline .= " --icmp-type $dport";
+							} else {
+								$outline .= " --dport $dport";
+							}
+						}
+						if ( defined($oiface) && $oiface !~ /^$/ ) {
+							print $FILEfilter "-A fwd-$iface $outline -o $oiface -j DROP\n";
+						} else {
+							print $FILEfilter "-A fwd-$iface $outline -j DROP\n";
+						  print $FILEfilter "-A in-$iface $outline -j DROP\n";
+						}
+					}
+				}
+			}
+		}
+	}
+	close $nologclients;
+}
+
 =head2 fw_rejectclients
 =cut
 
@@ -1012,6 +1070,17 @@ if ($fw_privclients) {
 			print "  ".$line;
 		}
 		fw_privclients($dbh, $iface, $cfg->find('config/@path')."/$interfacedir/privclients", $commentchain);
+	}
+	print "Disabling specific dropped connnection logs\n";
+	foreach my $interfacedir (@interfaces) {
+		-s $cfg->find('config/@path')."/$interfacedir/nolog" || next;
+		$commentchain=firewall_comment_add_key($dbh,"$interfacedir/nolog");
+		my $iface = $interfacedir;
+		$iface =~ s/^interface-//;
+		foreach my $line (values(@{$comment{$iface}})) {
+			print "  ".$line;
+		}
+		fw_nologclients($dbh, $iface, $cfg->find('config/@path')."/$interfacedir/nologclients", $commentchain);
 	}
 	print "Adding Policy Routing\n";
 	foreach my $interfacedir (@interfaces) {

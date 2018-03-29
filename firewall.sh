@@ -241,61 +241,6 @@ sync
 . ./localhost
 sync
 
-echo "Disable some logging"
-lihas_ipt_nolog () {
-  snet=$1
-  dnet=$2
-  proto=$3
-  dport=$4
-  oiface=$5
-  if [ "$snet" == "include" ]; then
-    if [ -e "$dnet" ]; then
-      cat $dnet | firewall-lihas -H -P | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
-      while read snet dnet proto dport oiface; do
-        lihas_ipt_nolog "$snet" "$dnet" "$proto" "$dport" "$oiface"
-      done
-    else
-      echo "$snet doesn't exist"
-    fi
-  else
-    if [ $dport == "0" ]; then
-      if [ "ga$oiface" == "ga" ]; then
-        IPT_FILTER "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -j DROP"
-        IPT_FILTER "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -j DROP"
-      else
-        IPT_FILTER "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto -o $oiface -j DROP"
-      fi
-    else
-      if [ "ga$oiface" == "ga" ]; then
-        if [ $proto == "icmp" ]; then
-          IPT_FILTER "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -j DROP"
-          IPT_FILTER "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -j DROP"
-        else 
-          IPT_FILTER "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -j DROP"
-          IPT_FILTER "-A in-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -j DROP"
-        fi
-      else
-        if [ $proto == "icmp" ]; then
-          IPT_FILTER "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --icmp-type $dport -o $oiface -j DROP"
-        else 
-          IPT_FILTER "-A fwd-$iface $CONNSTATE NEW -s $snet -d $dnet -p $proto --dport $dport -o $oiface -j DROP"
-        fi
-      fi
-    fi
-  fi
-}
-
-for iface in interface-*; do
-  iface=${iface#interface-}
-  if [ -e interface-$iface/nolog ]; then
-    [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
-    cat interface-$iface/nolog | firewall-lihas -H -P | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
-    while read snet dnet proto dport oiface; do
-      lihas_ipt_nolog "$snet" "$dnet" "$proto" "$dport" "$oiface"
-    done
-  fi
-done
-
 lihas_ipt_mark_dhcpd () {
   iface=$1
   IPT_FILTER "-A INPUT -i $iface -p udp --sport 68 --dport 67 -j ACCEPT"
