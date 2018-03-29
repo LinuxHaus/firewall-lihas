@@ -585,7 +585,7 @@ sub fw_nologclients {
 		} else {
 			foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
 				foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
-					foreach my $line3 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line2}))) {
+					foreach my $line3 (split(/\n/,expand_ifacegroup({dbh=>$dbh, line=>$line2}))) {
 						$outline = "$CONNSTATE NEW";
 						if ( $do_comment ) {
 							$outline .= " -m comment --comment \"$commentchain\"";
@@ -643,7 +643,7 @@ sub fw_rejectclients {
 		} else {
 			foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
 				foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
-					foreach my $line3 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line2}))) {
+					foreach my $line3 (split(/\n/,expand_ifacegroup({dbh=>$dbh, line=>$line2}))) {
 						$outline = "$CONNSTATE NEW";
 						if ( $do_comment ) {
 							$outline .= " -m comment --comment \"$commentchain\"";
@@ -701,7 +701,7 @@ sub fw_privclients {
 		} else {
 		  foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
 		  	foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
-					foreach my $line3 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line2}))) {
+					foreach my $line3 (split(/\n/,expand_ifacegroup({dbh=>$dbh, line=>$line2}))) {
 		  			my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line3);
 		  			$outline = "$CONNSTATE NEW";
 						if ( $do_comment ) {
@@ -761,7 +761,7 @@ sub fw_policyrouting {
 		} else {
 			foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
 				foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
-					foreach my $line3 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line2}))) {
+					foreach my $line3 (split(/\n/,expand_ifacegroup({dbh=>$dbh, line=>$line2}))) {
 						my ($snet, $dnet, $proto, $dport, $policy) = split(/[\s]+/, $line3);
 						$outline = "";
 						if ( $do_comment ) {
