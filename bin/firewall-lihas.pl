@@ -936,16 +936,14 @@ if ($fw_privclients) {
 		foreach my $line (values(@{$comment{$iface}})) {
 			print "  ".$line;
 		}
-	   open(my $cf, "<", $cfg->find('config/@path')."/$interfacedir/network-ipsec") or die "cannot open < ".$cfg->find('config/@path')."/$interfacedir/network-ipsec".": $!";
+	  open(my $cf, "<", $cfg->find('config/@path')."/$interfacedir/network-ipsec") or die "cannot open < ".$cfg->find('config/@path')."/$interfacedir/network-ipsec".": $!";
 		foreach my $line (<$cf>) {
 			chomp($line);
 			$line =~ s/[ \t]*#.*//;
 			$line =~ m/^[ \t]*$/ && next;
 			print $FILEfilter "-A INPUT -s $line -i $iface -j in-$iface\n";
-			print $FILEfilter "-A OUTPUT -d $line -o $iface -j out-$iface\n";
 			print $FILEfilter "-A FORWARD -s $line -i $iface -j fwd-$iface\n";
 			print $FILEfilter "-A INPUT -s $line -i $iface -j dns-in-$iface\n";
-			print $FILEfilter "-A OUTPUT -d $line -o $iface -j dns-out-$iface\n";
 			print $FILEfilter "-A FORWARD -s $line -i $iface -j dns-fwd-$iface\n";
 			print $FILEmangle "-A PREROUTING -p esp -j MARK --set-mark 8000/0000\n";
 			print $FILEmangle "-A PREROUTING -p ah -j MARK --set-mark 8000/0000\n";
@@ -968,10 +966,10 @@ if ($fw_privclients) {
 			print "  ".$line;
 		}
 		if ( $iface =~ /^lo$/ ) {
-      print $FILEfilter "-A OUTPUT -j in-$iface\n";
+      print $FILEfilter "-A OUTPUT -j fwd-$iface\n";
       print $FILEnat "-A OUTPUT -j pre-$iface\n";
       print $FILEnat "-A POSTROUTING -o $iface -j post-$iface\n";
-      print $FILEfilter "-A OUTPUT -j dns-in-$iface\n";
+      print $FILEfilter "-A OUTPUT -j dns-fwd-$iface\n";
       print $FILEnat "-A OUTPUT -j dns-pre-$iface\n";
       print $FILEnat "-A POSTROUTING -o $iface -j dns-post-$iface\n";
 		} else {
