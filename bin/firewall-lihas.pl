@@ -980,10 +980,8 @@ if ($fw_privclients) {
 					$line =~ s/[ \t]*#.*//;
 					$line =~ m/^[ \t]*$/ && next;
 	        print $FILEfilter "-A INPUT -s $line -i $iface -j in-$iface\n";
-	        print $FILEfilter "-A OUTPUT -d $line -o $iface -j out-$iface\n";
 	        print $FILEfilter "-A FORWARD -s $line -i $iface -j fwd-$iface\n";
 	        print $FILEfilter "-A INPUT -s $line -i $iface -j dns-in-$iface\n";
-	        print $FILEfilter "-A OUTPUT -d $line -o $iface -j dns-out-$iface\n";
 	        print $FILEfilter "-A FORWARD -s $line -i $iface -j dns-fwd-$iface\n";
 				}
 				close($cf);
