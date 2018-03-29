@@ -134,7 +134,7 @@ sub parse_ifacegroup {
 				foreach my $iface (values(@{$ifacegroup{$1}{ifaces}})) {
 					push(@{$ifacegroup{$name}{ifaces}}, $iface);
 				}
-			} elsif ( $line =~ m/^([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(|\/[0-9]+)|dns-[a-zA-Z0-9-\.]+)(\s.*|)$/){
+			} elsif ( $line =~ m/^(.*)$/){
 				my $iface = $1;
 				push(@{$ifacegroup{$name}{ifaces}}, $iface);
 			}
@@ -202,7 +202,7 @@ sub expand_ifacegroup {
 			foreach my $replacement (values(@{${$ifacegroup{$name}}{ifaces}})) {
 				$replaceline = $line;
 				$replaceline =~ s/ifacegroup-$name\b/$replacement/;
-				$resultline .= expand_ifacegroup({dbh=>$dbh, line=>$replaceline});
+				$resultline .= expand_ifacegroup({dbh=>$dbh, line=>$replaceline}) . "\n";
 			}
 			$line = $resultline;
 		}
