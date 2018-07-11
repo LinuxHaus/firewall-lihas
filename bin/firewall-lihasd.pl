@@ -85,7 +85,7 @@ if ($cfg->find('feature/portal/@enabled') !~ /^(|0)$/ ) {
 		eval { require LiHAS::Firewall::Portal }; if ($@) { WARN "No portal support: $@"; $feature{'portal'}=0; } else { $feature{'portal'}=1; }
 	} else {
 		WARN "Portal support wanted, but POE::Component::Server::HTTP not available";
-		WARN "Either install POE::Component::Server::HTTP or disable portal support with feature/portal/@enabled=0 in config.xml";
+		WARN 'Either install POE::Component::Server::HTTP or disable portal support with feature/portal/@enabled=0 in config.xml';
 	}
 } else { $feature{'portal'}=0; }
 

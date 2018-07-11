@@ -272,8 +272,8 @@ cat $FILEmangle | sed '/-[sd] dns-/d' >> $FILE
 cat $FILEmangle | sed -n '/-[sd] dns-/p' > $DATAPATH/dns-mangle
 echo COMMIT >> $FILE
 echo *nat >> $FILE
-cat $FILEnat | sed '/-[sd] dns-/d' >> $FILE
-cat $FILEnat | sed -n '/-[sd] dns-/p' > $DATAPATH/dns-nat
+cat $FILEnat | sed '/-[sd] dns-/d; /--to-destination dns/d' >> $FILE
+cat $FILEnat | sed -n '/-[sd] dns-/p; /--to-destination dns/p' > $DATAPATH/dns-nat
 echo COMMIT >> $FILE
 
 }
