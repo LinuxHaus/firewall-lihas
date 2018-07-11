@@ -45,6 +45,7 @@ sub dns_update {
 sub dns_response {
   my ($kernel,$heap,$response) = @_[KERNEL, HEAP, ARG0];
   my @answers;
+  my %dnsips;
   if ( not defined $response->{response} ) {
     return 0;
   }
@@ -53,8 +54,19 @@ sub dns_response {
   my $sth;
   my $sth1;
   my ($count, $hostname, $time_first, $time_valid_till, $ip);
-  if ( $#answers > 0 ) {
-    die "DNS is not supported for hosts resolving to more than 1 address: ".$response->{host};
+# Plan to support multiple answers:
+# select all current answers from database for a host into a hash dnsips{$ip}=0
+# do the dnslookup, write Ips into dnsips{$ip}=ttl
+# iterate on keys %dnsips, if $dnsips{$ip}=0 -> copy db-entry to history and delete it
+# if $dnsips{$ip}>0 update/insert entry
+  $sql = "SELECT hostname, time_first, time_valid_till, ip FROM hostnames_current WHERE hostname=?";
+  $sth = $heap->{dbh}->prepare($sql);
+  $sth->execute($response->{host});
+  $sth->bind_columns(\$hostname, \$time_first, \$time_valid_till, \$ip);
+  while ( $sth->fetch ) {
+    $dnsips{$ip}{ttl}=0;
+    $dnsips{$ip}{time_first}=$time_first;
+    $dnsips{$ip}{time_valid_till}=$time_valid_till;
   }
   foreach my $answer (@answers) {
     print(
@@ -63,38 +75,32 @@ sub dns_response {
       $answer->type(), " ",
       $answer->rdatastr(), "\n"
     );
-    $sql = "SELECT count(*), hostname, time_first, time_valid_till, ip FROM hostnames_current WHERE hostname=?";
-    $sth = $heap->{dbh}->prepare($sql);
-    $sth->execute($response->{host});
-    $sth->bind_columns(\$count, \$hostname, \$time_first, \$time_valid_till, \$ip);
-    while ( $sth->fetch ) {
-      if ($count == 0) {
+    $dnsips{$ip}=$answer->rdatastr();
+  }
+
+  foreach my $ip (keys %dnsips) {
+    if ($dnsips{$ip}{ttl} == 0) {
+      $sql = "INSERT INTO dnshistory (hostname, time_first, time_valid_till, ip, active) VALUES (?, ?, ?, ?, ?)";
+      $sth1 = $heap->{dbh}->prepare($sql);
+      $sth1->execute($response->{host}, $dnsips{$ip}{time_first}, $dnsips{$ip}{time_valid_till}, $ip, 0);
+      $sql = "UPDATE vars_num SET value=? WHERE name=?";
+      $sth1 = $heap->{dbh}->prepare("$sql");
+      $sth1->execute(1,'fw_reload_dns');
+      $kernel->delay('firewall_reload_dns',10);
+    } else {
+      if ( ! defined($dnsips{$ip}{time_first}) ) {
+	# new entry
         $sql = "INSERT INTO hostnames_current (hostname, time_first, time_valid_till, ip) VALUES (?, ?, ?, ?)";
 	$sth1 = $heap->{dbh}->prepare($sql);
-	$sth1->execute($response->{host}, time(), time()+$answer->ttl(), $answer->rdatastr());
-	$sql = "UPDATE vars_num SET value=? WHERE name=?";
-	$sth1 = $heap->{dbh}->prepare("$sql");
+	$sth1->execute($response->{host}, time(), time()+$answer->ttl(), $ip);
+        $sql = "UPDATE vars_num SET value=? WHERE name=?";
+        $sth1 = $heap->{dbh}->prepare("$sql");
         $sth1->execute(1,'fw_reload_dns');
-	$kernel->delay('firewall_reload_dns',10);
-      } elsif ($count == 1) {
-        if ($answer->rdatastr() !~ /^$ip$/) {
-          $sql = "INSERT INTO dnshistory (hostname, time_first, time_valid_till, ip, active) VALUES (?, ?, ?, ?, ?)";
-	  $sth1 = $heap->{dbh}->prepare($sql);
-	  $sth1->execute($response->{host}, time(), time()+$answer->ttl(), $answer->rdatastr(), 0);
-          $sql = "UPDATE hostnames_current SET time_valid_till=?, ip=? WHERE hostname=?";
-	  $sth1 = $heap->{dbh}->prepare($sql);
-	  $sth1->execute(time()+$answer->ttl(), $answer->rdatastr(), $response->{host});
-	  $sql = "UPDATE vars_num SET value=? WHERE name=?";
-	  $sth1 = $heap->{dbh}->prepare("$sql");
-          $sth1->execute(1,'fw_reload_dns');
-	  $kernel->delay('firewall_reload_dns',10);
-        } else {
-          $sql = "UPDATE hostnames_current SET time_valid_till=? WHERE hostname=? AND ip=?";
-	  $sth1 = $heap->{dbh}->prepare($sql);
-	  $sth1->execute(time()+$answer->ttl(), $response->{host}, $answer->rdatastr());
-        }
+        $kernel->delay('firewall_reload_dns',10);
       } else {
-        die "DNS is not supported for hosts resolving to more than 1 address: ".$response->{host};
+        $sql = "UPDATE hostnames_current SET time_valid_till=? WHERE hostname=? AND ip=?";
+        $sth1 = $heap->{dbh}->prepare($sql);
+        $sth1->execute(time()+$answer->ttl(), $response->{host}, $answer->rdatastr());
       }
     }
   }
