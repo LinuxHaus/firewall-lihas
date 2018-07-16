@@ -46,6 +46,7 @@ sub dns_response {
   my ($kernel,$heap,$response) = @_[KERNEL, HEAP, ARG0];
   my @answers;
   my %dnsips;
+  my $ttl;
   if ( not defined $response->{response} ) {
     return 0;
   }
@@ -75,9 +76,8 @@ sub dns_response {
       $answer->type(), " ",
       $answer->rdatastr(), "\n"
     );
-    $dnsips{$ip}=$answer->rdatastr();
+    $dnsips{$answer->rdatastr()}{ttl}=$answer->ttl;
   }
-
   foreach my $ip (keys %dnsips) {
     if ($dnsips{$ip}{ttl} == 0) {
       $sql = "INSERT INTO dnshistory (hostname, time_first, time_valid_till, ip, active) VALUES (?, ?, ?, ?, ?)";
@@ -92,7 +92,7 @@ sub dns_response {
 	# new entry
         $sql = "INSERT INTO hostnames_current (hostname, time_first, time_valid_till, ip) VALUES (?, ?, ?, ?)";
 	$sth1 = $heap->{dbh}->prepare($sql);
-	$sth1->execute($response->{host}, time(), time()+$answer->ttl(), $ip);
+	$sth1->execute($response->{host}, time(), time()+$dnsips{$ip}{ttl}, $ip);
         $sql = "UPDATE vars_num SET value=? WHERE name=?";
         $sth1 = $heap->{dbh}->prepare("$sql");
         $sth1->execute(1,'fw_reload_dns');
@@ -100,7 +100,7 @@ sub dns_response {
       } else {
         $sql = "UPDATE hostnames_current SET time_valid_till=? WHERE hostname=? AND ip=?";
         $sth1 = $heap->{dbh}->prepare($sql);
-        $sth1->execute(time()+$answer->ttl(), $response->{host}, $answer->rdatastr());
+        $sth1->execute(time()+$dnsips{$ip}{ttl}, $response->{host}, $answer->rdatastr());
       }
     }
   }

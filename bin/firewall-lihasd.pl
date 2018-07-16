@@ -17,18 +17,35 @@
 
 # Requirements: libxml-application-config-perl liblog-log4perl-perl liblog-dispatch-perl
 
-BEGIN {
-  use Net::Server::Daemonize qw(daemonize check_pid_file unlink_pid_file);    # or any other daemonization module
-  daemonize(
-		'root',
-		'root',
-		'/var/run/firewall-lihasd.pid'
-	);
-}
+$DEBUG=0;
+$DAEMON=1;
+use Getopt::Mixed;
 
 use Log::Log4perl qw(:easy);
 Log::Log4perl::init('/etc/firewall.lihas.d/log4perl.conf');
 if (! Log::Log4perl::initialized()) { WARN "uninit"; } else { WARN "init"; }
+
+my ($option, $value);
+Getopt::Mixed::init("d debug>d");
+while (($option, $value) = Getopt::Mixed::nextOption()) {
+	if ($option=~/^d$/) {
+		$DEBUG=1;
+		$DAEMON=0;
+	} else {
+		ERROR "Unknown Option $option\n";
+	}
+}
+
+BEGIN {
+	if ($DAEMON) {
+    use Net::Server::Daemonize qw(daemonize check_pid_file unlink_pid_file);    # or any other daemonization module
+    daemonize(
+	  	'root',
+	  	'root',
+	  	'/var/run/firewall-lihasd.pid'
+	  );
+	}
+}
 
 =head1 NAME
 
