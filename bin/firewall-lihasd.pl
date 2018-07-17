@@ -40,14 +40,14 @@ while (($option, $value) = Getopt::Mixed::nextOption()) {
 }
 
 BEGIN {
-	if ($DAEMON) {
+#	if ($DAEMON==1) {
     use Net::Server::Daemonize qw(daemonize check_pid_file unlink_pid_file);    # or any other daemonization module
     daemonize(
 	  	'root',
 	  	'root',
 	  	'/var/run/firewall-lihasd.pid'
 	  );
-	}
+#	}
 }
 
 =head1 NAME
