@@ -20,10 +20,13 @@
 $DEBUG=0;
 $DAEMON=1;
 use Getopt::Mixed;
+use Data::Dumper;
 
 use Log::Log4perl qw(:easy);
 Log::Log4perl::init('/etc/firewall.lihas.d/log4perl.conf');
-if (! Log::Log4perl::initialized()) { WARN "uninit"; } else { WARN "init"; }
+if (! Log::Log4perl::initialized()) { WARN "uninit"; } else { INFO "init"; }
+
+INFO "$0 starting\n";
 
 my ($option, $value);
 Getopt::Mixed::init("d debug>d");
@@ -108,6 +111,7 @@ if ($cfg->find('feature/portal/@enabled') !~ /^(|0)$/ ) {
 
 =head1 Functions
 
+=cut
 #=head2 firewall_reload_ipsec
 #
 #Reloads the ipsec.secrets with current IPs from database
@@ -138,13 +142,42 @@ if ($cfg->find('feature/portal/@enabled') !~ /^(|0)$/ ) {
 #	}
 #}
 
+=head2 expand_dns
+
+Expands dns-* to the corresponding IPs from DB
+=cut
+sub expand_dns {
+	my ($arg_ref) = @_;
+	my $line = $arg_ref->{line};
+	my $depth = $arg_ref->{depth};
+	my $iptupdate = $arg_ref->{iptupdate};
+  my %replacedns = %{$arg_ref->{replacedns}};
+	my %replacehostcount = %{$arg_ref->{replacehostcount}};
+	my $outline='';
+
+	if ( $line =~ m/([sd][ \t]+)dns-([a-zA-Z0-9_\.-]+)\b/ ) {
+		my $name = $2;
+		if ( not defined $replacedns{$name}{count} ) {
+			WARN "expand_dns: dns-$name unresolved";
+		}
+    foreach my $ip (values(@{$replacedns{$name}{ips}})) {
+			my $thisline = $line;
+			$thisline =~ s/([sd][ \t]+)dns-$name/$1$ip/;
+			$outline .= expand_dns({iptupdate=>$iptupdate, line=>$thisline, replacehostcount=>\%replacehostcount, replacedns=>\%replacedns, depth=>$depth+1})
+		}
+		return $outline;
+	} else {
+		return $line;
+	}
+}
 =head2 firewall_reload_dns
 
 Reloads the iptables dns-* chains with current IPs from database
 =cut
 sub firewall_reload_dns {
   my ($kernel, $session, $heap) = @_[KERNEL, SESSION, HEAP];
-  my @replacedns;
+  my %replacedns;
+	my %replacehostcount;
   my ($hostname, $ip, $table);
   my ($dh, $fh, $line, $iptupdate, $iptflush, $flushline);
   my $logger = Log::Log4perl->get_logger('firewalld.reload.dns');
@@ -159,10 +192,9 @@ sub firewall_reload_dns {
   $sth->execute();
   $sth->bind_columns(\$hostname, \$ip);
   while ($sth->fetch()) {
-    push(@replacedns,[ "dns-$hostname", "$ip" ] );
+    push(@{$replacedns{$hostname}{ips}}, "$ip");
+		$replacedns{$hostname}{count}+=1;
   }
-  push(@replacedns,[ "^-A ", "-A dns-" ] );
-
   if ( -e $heap->{datapath}."/ipt_update" ) {
     unlink $heap->{datapath}."/ipt_update" or $logger->warn("Could not unlink ".$heap->{datapath}."/ipt_update: $!");
   }
@@ -170,36 +202,31 @@ sub firewall_reload_dns {
   if ( ! opendir($dh, $heap->{datapath}) ) { $logger->fatal("can't opendir ".$heap->{datapath}.": $!\n"); exit 1; };
   my @files = grep { /^dns-/ && -f $heap->{datapath}."/$_" } readdir($dh);
   closedir $dh;
-  foreach my $file (@files) {
-    $table = $file;
-    $table =~ s/^dns-//;
-    if (! open($iptflush, "iptables-save -t $table |")) { $logger->fatal("cannot open iptables-save -t $table |: $!"); exit 1};
-    foreach $flushline (<$iptflush>) {
-      if ($flushline =~ m/^(:dns-[^ ]*) /) {
-        print $iptupdate "iptables -t $table -F $1\n";
-      }
-    }
-    close($iptflush);
-    if ( ! open($fh, "<", $heap->{datapath}."/$file")) { $logger->fatal("cannot open < ".$heap->{datapath}."/$file: $!"); exit 1};
-    foreach $line (<$fh>) {
-      foreach my $replace (@replacedns) {
-        $line =~ s/$replace->[0]/$replace->[1]/g;
-      }
-      if ( $line =~ m/[sd] dns-/ ) {
-        # warn "Unknown dns-reference: iptables -t $table $line";
-        next;
-      }
-      print $iptupdate "iptables -t $table ".$line;
-    }
-    close($fh);
-  }
+	foreach my $file (@files) {
+		$table = $file;
+		$table =~ s/^dns-//;
+		# create flush-statements for old tables
+		if (! open($iptflush, "iptables-save -t $table |")) { $logger->fatal("cannot open iptables-save -t $table |: $!"); exit 1};
+		foreach $flushline (<$iptflush>) {
+			if ($flushline =~ m/^(:dns-[^ \t]*) /) {
+				print $iptupdate "iptables -t $table -F $1\n";
+			}
+		}
+		close($iptflush);
+		if ( ! open($fh, "<", $heap->{datapath}."/$file")) { $logger->fatal("cannot open < ".$heap->{datapath}."/$file: $!"); exit 1};
+		foreach $line (<$fh>) {
+			$line =~ s/^-A[ \t]/iptables -t $table -A dns-/;
+			print $iptupdate expand_dns({iptupdate=>$iptupdate, line=>$line, replacehostcount=>\%replacehostcount, replacedns=>\%replacedns, depth=>0})
+		}
+		close($fh);
+	}
   close ($iptupdate);
   chmod 0555, $heap->{datapath}."/ipt_update";
   system($heap->{datapath}."/ipt_update");
 }
 
 =head2 firewall_find_dnsnames
-checks the firewall config groups/hostname-* for dns-names and adds syncs them with the list of names to be checked
+checks the firewall config groups/hostname-* for dns-names and adds them to the list of names to be checked
 =cut
 sub firewall_find_dnsnames {
   my ($kernel, $session, $heap) = @_[KERNEL, SESSION, HEAP];
@@ -407,7 +434,6 @@ if ($have_httpd) {
   #POE::Kernel->call($aliases->{tcp}, "shutdown");
 }
 
-DEBUG "kernel-run\n";
 POE::Kernel->run();
 exit 0;
 # vim: ts=2 sw=2 sts=2 sr noet

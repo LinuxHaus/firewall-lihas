@@ -83,6 +83,9 @@ sub dns_response {
       $sql = "INSERT INTO dnshistory (hostname, time_first, time_valid_till, ip, active) VALUES (?, ?, ?, ?, ?)";
       $sth1 = $heap->{dbh}->prepare($sql);
       $sth1->execute($response->{host}, $dnsips{$ip}{time_first}, $dnsips{$ip}{time_valid_till}, $ip, 0);
+      $sql = "DELETE FROM hostnames_current where hostname=? AND ip=?";
+      $sth1 = $heap->{dbh}->prepare($sql);
+      $sth1->execute($response->{host}, $ip);
       $sql = "UPDATE vars_num SET value=? WHERE name=?";
       $sth1 = $heap->{dbh}->prepare("$sql");
       $sth1->execute(1,'fw_reload_dns');
@@ -100,7 +103,7 @@ sub dns_response {
       } else {
         $sql = "UPDATE hostnames_current SET time_valid_till=? WHERE hostname=? AND ip=?";
         $sth1 = $heap->{dbh}->prepare($sql);
-        $sth1->execute(time()+$dnsips{$ip}{ttl}, $response->{host}, $answer->rdatastr());
+        $sth1->execute(time()+$dnsips{$ip}{ttl}, $response->{host}, $ip);
       }
     }
   }

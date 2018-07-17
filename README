@@ -66,7 +66,7 @@ darin finden die relevanten Dinge statt.
        include DATEINAME
     enthalten.
 
-  - privclients, dnat, snat, masquerade, nolog, reject koennen statt Rechner-/Netzadressen auch
+  - groups/hostgroup-* koennen statt Rechner-/Netzadressen auch
     dns-HOSTNAME
     z.B. dns-www.lihas.de enthalten.
     DNS muss dafuer funktionieren, mehrere IPs pro Name sind ok,
