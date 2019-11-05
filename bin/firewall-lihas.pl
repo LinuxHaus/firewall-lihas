@@ -30,6 +30,7 @@ my $do_shaping=0;
 my $TARGETLOG="LOG";
 our $do_comment=$ENV{'HAVE_COMMENT'};
 our %policymark;
+my $CONNSTATE=$ENV{'CONNSTATE'};
 use Getopt::Mixed;
 my ($option, $value);
 Getopt::Mixed::init("H P s d f v l=s c=s comment>v conntrack>c firewall>f expand-hostgroup>H expand-portgroup>P shaping>s log>l debug>d");
@@ -351,31 +352,29 @@ sub fw_nonat {
 						my ($snet, $dnet, $proto, $dport) = split(/[\s]+/, $line3);
 						$outline = "";
 						if ( $do_comment ) {
-							$outline .= " comment \"$commentchain\"";
+							$outline .= " -m comment --comment \"$commentchain\"";
 						}
 						if ( $snet =~ m/ipset-(.*)/ ) {
 							$outline .= " -m set --match-set $1 src";
-							ERROR "IPSET Support missing in nonat";
 						} else {
-							$outline .= " inet saddr $snet";
+							$outline .= " -s $snet";
 						}
 						if ( $dnet =~ m/ipset-(.*)/ ) {
 							$outline .= " -m set --match-set $1 dst";
-							ERROR "IPSET Support missing in nonat";
 						} else {
-							$outline .= " inet daddr $dnet";
+							$outline .= " -d $dnet";
 						}
 						if ( $dport =~ /^0$/ ) {
-							$outline .= " $proto";
+							$outline .= " -p $proto";
 						} else {
 							if ( $proto =~ /^icmp$/ ) {
-								$outline .= " $proto type $dport";
+								$outline .= " -p $proto --icmp-type $dport";
 							} else {
-								$outline .= " $proto dport $dport";
+								$outline .= " -p $proto --dport $dport";
 							}
 						}
-						print $FILEnat "nft add rule inet nat post-$iface $outline counter accept\n";
-						print $FILEnat "nft add rule inet nat pre-$iface $outline counter accept\n";
+						print $FILEnat "-A post-$iface $outline -j ACCEPT\n";
+						print $FILEnat "-A pre-$iface $outline -j ACCEPT\n";
 					}
 				}
 			}
@@ -406,41 +405,39 @@ sub fw_dnat {
 				foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
 					foreach my $line3 (split(/\n/,expand_ifacegroup({dbh=>$dbh, line=>$line2}))) {
 						my ($dnet, $mnet, $proto, $dport, $ndport) = split(/[\s]+/, $line3);
-						$outline = "nft add rule inet nat pre-$iface";
+						$outline = "-A pre-$iface";
 						if ( $do_comment ) {
-							$outline .= " comment \"$commentchain\"";
+							$outline .= " -m comment --comment \"$commentchain\"";
 						}
 						if ($dnet =~ /^ACCEPT$/) {
 							if ( $mnet =~ m/ipset-(.*)/ ) {
 								$outline .= " -m set --match-set $1 src";
-							  ERROR "IPSET Support missing in fw_dnat";
 							} else {
-								$outline .= " inet saddr $mnet";
+								$outline .= " -s $mnet";
 							}
 							if ($dport =~ /^0$/ ) {
-								print $FILEnat "$outline $proto accept\n";
+								print $FILEnat "$outline -p $proto -j ACCEPT\n";
 							} else {
 								if ( $proto =~ /^icmp$/ ) {
-									print $FILEnat "$outline $proto icmp type $dport accept\n";
+									print $FILEnat "$outline -p $proto --icmp-type $dport -j ACCEPT\n";
 								} else {
-									print $FILEnat "$outline $proto dport $dport accept\n";
+									print $FILEnat "$outline -p $proto --dport $dport -j ACCEPT\n";
 								}
 							}
 						} else {
 							if ( $dnet =~ m/ipset-(.*)/ ) {
 								$outline .= " -m set --match-set $1 dst";
-							  ERROR "IPSET Support missing in fw_dnat";
 							} else {
-								$outline .= " inet daddr $dnet";
+								$outline .= " -d $dnet";
 							}
 							if ( $dport =~ /^0$/ ) {
-								print $FILEnat "$outline $proto dnat to $mnet\n";
+								print $FILEnat "$outline -p $proto -j DNAT --to-destination $mnet\n";
 							} else {
 								$ndport =~ s/:/-/g;
 								if ( $proto =~ /^icmp$/ ) {
-									print $FILEnat "$outline $proto icmp type $dport dnat to $mnet:$ndport\n";
+									print $FILEnat "$outline -p $proto --icmp-type $dport -j DNAT --to-destination $mnet:$ndport\n";
 								} else {
-									print $FILEnat "$outline $proto dport $dport dnat to $mnet:$ndport\n";
+									print $FILEnat "$outline -p $proto --dport $dport -j DNAT --to-destination $mnet:$ndport\n";
 								}
 							}
 		  			}
@@ -474,40 +471,38 @@ sub fw_snat {
 				foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
 					foreach my $line3 (split(/\n/,expand_ifacegroup({dbh=>$dbh, line=>$line2}))) {
 						my ($snet, $mnet, $proto, $dport) = split(/[\s]+/, $line3);
-						$outline = "nft add rule inet nat post-$iface";
+						$outline = "-A post-$iface";
 						if ( $do_comment ) {
-							$outline .= " comment \"$commentchain\"";
+							$outline .= " -m comment --comment \"$commentchain\"";
 						}
 						if ($snet =~ /^ACCEPT$/) {
 							if ( $mnet =~ m/ipset-(.*)/ ) {
 								$outline .= " -m set --match-set $1 src";
-							  ERROR "IPSET Support missing in fw_snat";
 							} else {
-								$outline .= " inet saddr $mnet";
+								$outline .= " -s $mnet";
 							}
 							if ($dport =~ /^0$/ ) {
-								print $FILEnat "$outline $proto accept\n";
+								print $FILEnat "$outline -p $proto -j ACCEPT\n";
 							} else {
 								if ( $proto =~ /^icmp$/ ) {
-									print $FILEnat "$outline $proto type $dport accept\n";
+									print $FILEnat "$outline -p $proto --icmp-type $dport -j ACCEPT\n";
 								} else {
-									print $FILEnat "$outline $proto dport $dport accept\n";
+									print $FILEnat "$outline -p $proto --dport $dport -j ACCEPT\n";
 								}
 							}
 						} else {
 							if ( $snet =~ m/ipset-(.*)/ ) {
 								$outline .= " -m set --match-set $1 src";
-							  ERROR "IPSET Support missing in fw_snat";
 							} else {
-								$outline .= " inet saddr $snet";
+								$outline .= " -s $snet";
 							}
 							if ( $dport =~ /^0$/ ) {
-								print $FILEnat "$outline $proto counter snat to $mnet\n";
+								print $FILEnat "$outline -p $proto -j SNAT --to-source $mnet\n";
 							} else {
 								if ( $proto =~ /^icmp$/ ) {
-									print $FILEnat "$outline $proto type $dport counter snat to $mnet\n";
+									print $FILEnat "$outline -p $proto --icmp-type $dport -j SNAT --to-source $mnet\n";
 								} else {
-									print $FILEnat "$outline $proto dport $dport counter snat to $mnet\n";
+									print $FILEnat "$outline -p $proto --dport $dport -j SNAT --to-source $mnet\n";
 								}
 							}
 						}
@@ -542,26 +537,25 @@ sub fw_masquerade {
 					foreach my $line3 (split(/\n/,expand_ifacegroup({dbh=>$dbh, line=>$line2}))) {
 						$outline = "-A post-$iface";
 						if ( $do_comment ) {
-							$outline .= " comment \"$commentchain\"";
+							$outline .= " -m comment --comment \"$commentchain\"";
 						}
 		  			my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line3);
 						if ( $snet =~ m/ipset-(.*)/ ) {
 							$outline .= " -m set --match-set $1 src";
-							ERROR "IPSET Support missing in fw_masquerade";
 						} else {
-							$outline .= " inet saddr $snet";
+							$outline .= " -s $snet";
 						}
 		  			if ( $dport !~ /^0$/ ) {
 		  				if ( $proto =~ /^icmp$/ ) {
-		  					$outline .= " $proto type $dport";
+		  					$outline .= " -p $proto --icmp-type $dport";
 		  				} else {
-		  					$outline .= " $proto dport $dport";
+		  					$outline .= " -p $proto --dport $dport";
 		  				}
 		  			}
 		  			if ( defined($oiface) && $oiface !~ /^$/ ) {
-		  				print $FILEnat "$outline oifname $oiface counter masquerade\n";
+		  				print $FILEnat "$outline -o $oiface -j MASQUERADE\n";
 		  			} else {
-		  				print $FILEnat "$outline counter masquerade\n";
+		  				print $FILEnat "$outline -j MASQUERADE\n";
 		  			}
 		  		}
 				}
@@ -592,36 +586,34 @@ sub fw_nologclients {
 			foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
 				foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
 					foreach my $line3 (split(/\n/,expand_ifacegroup({dbh=>$dbh, line=>$line2}))) {
-						$outline = "ct state new";
+						$outline = "$CONNSTATE NEW";
 						if ( $do_comment ) {
-							$outline .= " comment \"$commentchain\"";
+							$outline .= " -m comment --comment \"$commentchain\"";
 						}
 						my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line3);
 						if ( $snet =~ m/ipset-(.*)/ ) {
 							$outline .= " -m set --match-set $1 src";
-							ERROR "IPSET Support missing in fw_nologclients";
 						} else {
-							$outline .= " inet saddr";
+							$outline .= " -s $snet";
 						}
 						if ( $dnet =~ m/ipset-(.*)/ ) {
 							$outline .= " -m set --match-set $1 dst";
-							ERROR "IPSET Support missing in fw_nologclients";
 						} else {
-							$outline .= " inet daddr";
+							$outline .= " -d $dnet";
 						}
-						$outline .= " $proto";
+						$outline .= " -p $proto";
 						if ( $dport !~ /^0$/ ) {
 							if ( $proto =~ /^icmp$/ ) {
-								$outline .= " type $dport";
+								$outline .= " --icmp-type $dport";
 							} else {
-								$outline .= " dport $dport";
+								$outline .= " --dport $dport";
 							}
 						}
 						if ( defined($oiface) && $oiface !~ /^$/ ) {
-							print $FILEfilter "nft add rule inet filter fwd-$iface $outline oifname $oiface counter drop\n";
+							print $FILEfilter "-A fwd-$iface $outline -o $oiface -j DROP\n";
 						} else {
-							print $FILEfilter "nft add rule inet filter fwd-$iface $outline counter drop\n";
-						  print $FILEfilter "nft add rule inet filter in-$iface $outline counter drop\n";
+							print $FILEfilter "-A fwd-$iface $outline -j DROP\n";
+						  print $FILEfilter "-A in-$iface $outline -j DROP\n";
 						}
 					}
 				}
@@ -652,36 +644,34 @@ sub fw_rejectclients {
 			foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
 				foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
 					foreach my $line3 (split(/\n/,expand_ifacegroup({dbh=>$dbh, line=>$line2}))) {
-						$outline = "ct state new";
+						$outline = "$CONNSTATE NEW";
 						if ( $do_comment ) {
-							$outline .= " comment \"$commentchain\"";
+							$outline .= " -m comment --comment \"$commentchain\"";
 						}
 						my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line3);
 						if ( $snet =~ m/ipset-(.*)/ ) {
 							$outline .= " -m set --match-set $1 src";
-							ERROR "IPSET Support missing in fw_rejectclients";
 						} else {
-							$outline .= " inet saddr";
+							$outline .= " -s $snet";
 						}
 						if ( $dnet =~ m/ipset-(.*)/ ) {
 							$outline .= " -m set --match-set $1 dst";
-							ERROR "IPSET Support missing in fw_rejectclients";
 						} else {
-							$outline .= " inet daddr";
+							$outline .= " -d $dnet";
 						}
-						$outline .= " $proto";
+						$outline .= " -p $proto";
 						if ( $dport !~ /^0$/ ) {
 							if ( $proto =~ /^icmp$/ ) {
-								$outline .= " type $dport";
+								$outline .= " --icmp-type $dport";
 							} else {
-								$outline .= " dport $dport";
+								$outline .= " --dport $dport";
 							}
 						}
 						if ( defined($oiface) && $oiface !~ /^$/ ) {
-							print $FILEfilter "nft add rule inet filter fwd-$iface $outline oifname $oiface counter reject\n";
+							print $FILEfilter "-A fwd-$iface $outline -o $oiface -j REJECT\n";
 						} else {
-							print $FILEfilter "nft add rule inet filter fwd-$iface $outline counter reject\n";
-						  print $FILEfilter "nft add rule inet filter in-$iface $outline counter reject\n";
+							print $FILEfilter "-A fwd-$iface $outline -j REJECT\n";
+						  print $FILEfilter "-A in-$iface $outline -j REJECT\n";
 						}
 					}
 				}
@@ -713,37 +703,35 @@ sub fw_privclients {
 		  	foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
 					foreach my $line3 (split(/\n/,expand_ifacegroup({dbh=>$dbh, line=>$line2}))) {
 		  			my ($snet, $dnet, $proto, $dport, $oiface) = split(/[\s]+/, $line3);
-		  			$outline = "ct state new";
+		  			$outline = "$CONNSTATE NEW";
 						if ( $do_comment ) {
-							$outline .= " comment \"$commentchain\"";
+							$outline .= " -m comment --comment \"$commentchain\"";
 						}
 						if ( $snet =~ m/ipset-(.*)/ ) {
 							$outline .= " -m set --match-set $1 src";
-							ERROR "IPSET Support missing in fw_privclients";
 						} else {
-							$outline .= " inet saddr";
+							$outline .= " -s $snet";
 						}
 						if ( $dnet =~ m/ipset-(.*)/ ) {
 							$outline .= " -m set --match-set $1 dst";
-							ERROR "IPSET Support missing in fw_privclients";
 						} else {
-							$outline .= " inet daddr";
+							$outline .= " -d $dnet";
 						}
-						$outline .= " $proto";
+						$outline .= " -p $proto";
 		  			if ( $dport !~ /^0$/ ) {
 		  				if ( $proto =~ /^icmp$/ ) {
-		  					$outline .= " type $dport";
+		  					$outline .= " --icmp-type $dport";
 		  				} else {
-		  					$outline .= " dport $dport";
+		  					$outline .= " --dport $dport";
 		  				}
 		  			}
 		  			if ( defined($oiface) && $oiface =~ /^lo$/ ) {
-		  				print $FILEfilter "nft add rule inet filter in-$iface $outline accept\n";
+		  				print $FILEfilter "-A in-$iface $outline -j ACCEPT\n";
 		  			} elsif ( defined($oiface) && $oiface !~ /^$/ ) {
-		  				print $FILEfilter "nft add rule inet filter fwd-$iface $outline oifname $oiface accept\n";
+		  				print $FILEfilter "-A fwd-$iface $outline -o $oiface -j ACCEPT\n";
 		  			} else {
-		  				print $FILEfilter "nft add rule inet filter fwd-$iface $outline accept\n";
-		  			  print $FILEfilter "nft add rule inet filter in-$iface $outline accept\n";
+		  				print $FILEfilter "-A fwd-$iface $outline -j ACCEPT\n";
+		  			  print $FILEfilter "-A in-$iface $outline -j ACCEPT\n";
 		  			}
 		  		}
 				}
@@ -777,31 +765,29 @@ sub fw_policyrouting {
 						my ($snet, $dnet, $proto, $dport, $policy) = split(/[\s]+/, $line3);
 						$outline = "";
 						if ( $do_comment ) {
-							$outline .= " comment \"$commentchain\"";
+							$outline .= " -m comment --comment \"$commentchain\"";
 						}
 						if ( $snet =~ m/ipset-(.*)/ ) {
 							$outline .= " -m set --match-set $1 src";
-							ERROR "IPSET Support missing in fw_policyrouting";
 						} else {
-							$outline .= " inet saddr";
+							$outline .= " -s $snet";
 						}
 						if ( $dnet =~ m/ipset-(.*)/ ) {
 							$outline .= " -m set --match-set $1 dst";
-							ERROR "IPSET Support missing in fw_policyrouting";
 						} else {
-							$outline .= " inet daddr";
+							$outline .= " -d $dnet";
 						}
-						$outline .= " $proto";
+						$outline .= " -p $proto";
 						if ( $dport !~ /^0$/ ) {
 							if ( $proto =~ /^icmp$/ ) {
-								$outline .= " type $dport";
+								$outline .= " --icmp-type $dport";
 							} else {
-								$outline .= " dport $dport";
+								$outline .= " --dport $dport";
 							}
 						}
-						$outline .= " meta mark set $policymark{$policy}";
-						print $FILEmangle "nft add rule ip mangle OUTPUT $outline\n";
-						print $FILEmangle "nft add rule ip mangle PREROUTING $outline\n";
+						$outline .= " -j MARK --set-mark $policymark{$policy}";
+						print $FILEmangle "-A OUTPUT $outline\n";
+						print $FILEmangle "-A PREROUTING $outline\n";
 					}
 				}
 			}
@@ -955,19 +941,20 @@ if ($fw_privclients) {
 			chomp($line);
 			$line =~ s/[ \t]*#.*//;
 			$line =~ m/^[ \t]*$/ && next;
-			print $FILEfilter "nft add rule inet filter FORWARD inet saddr $line iifname $iface counter fwd-$iface\n";
-			print $FILEfilter "nft add rule inet filter INPUT inet saddr $line iifname $iface counter dns-in-$iface\n";
-			print $FILEfilter "nft add rule inet filter FORWARD inet saddr $line iifname $iface counter dns-fwd-$iface\n";
-			print $FILEmangle "nft add rule ip mangle PREROUTING esp meta mark set mark or 0x1f40\n";
-			print $FILEmangle "nft add rule ip mangle PREROUTING ah meta mark set mark or 0x1f40\n";
-				print $FILEfilter "nft add rule inet filter in-$iface inet saddr $line iifname $iface mark and 0x1f40 != 0x1f40 counter log\n";
-				print $FILEfilter "nft add rule inet filter fwd-$iface inet saddr $line iifname $iface mark and 0x1f40 != 0x1f40 counter log\n";
-				print $FILEfilter "nft add rule inet filter in-$iface inet saddr $line iifname $iface mark and 0x1f40 != 0x1f40 counter drop\n";
-				print $FILEfilter "nft add rule inet filter fwd-$iface inet saddr $line iifname $iface mark and 0x1f40 != 0x1f40 counter drop\n";
+			print $FILEfilter "-A INPUT -s $line -i $iface -j in-$iface\n";
+			print $FILEfilter "-A FORWARD -s $line -i $iface -j fwd-$iface\n";
+			print $FILEfilter "-A INPUT -s $line -i $iface -j dns-in-$iface\n";
+			print $FILEfilter "-A FORWARD -s $line -i $iface -j dns-fwd-$iface\n";
+			print $FILEmangle "-A PREROUTING -p esp -j MARK --set-mark 8000/0000\n";
+			print $FILEmangle "-A PREROUTING -p ah -j MARK --set-mark 8000/0000\n";
+				print $FILEfilter "-A in-$iface -s $line -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG\n";
+				print $FILEfilter "-A fwd-$iface -s $line -i $iface -m mark ! --mark 8000/8000 -j $TARGETLOG\n";
+				print $FILEfilter "-A in-$iface -s $line -i $iface -m mark ! --mark 8000/8000 -j DROP\n";
+				print $FILEfilter "-A fwd-$iface -s $line -i $iface -m mark ! --mark 8000/8000 -j DROP\n";
 		}
 		close($cf);
-		print $FILEnat "nft add rule inet natPREROUTING iifname $iface counter pre-$iface\n";
-		print $FILEnat "nft add rule inet natPOSTROUTING oifname $iface counter post-$iface\n";
+		print $FILEnat "-A PREROUTING -i $iface -j pre-$iface\n";
+		print $FILEnat "-A POSTROUTING -o $iface -j post-$iface\n";
 	}
 
 	print "Setting up Chains\n";
@@ -979,12 +966,12 @@ if ($fw_privclients) {
 			print "  ".$line;
 		}
 		if ( $iface =~ /^lo$/ ) {
-      print $FILEfilter "nft add rule inet filter OUTPUT counter fwd-$iface\n";
-      print $FILEnat "nft add rule inet natOUTPUT counter pre-$iface\n";
-      print $FILEnat "nft add rule inet natPOSTROUTING oifname $iface counter post-$iface\n";
-      print $FILEfilter "nft add rule inet filter OUTPUT counter dns-fwd-$iface\n";
-      print $FILEnat "nft add rule inet natOUTPUT counter dns-pre-$iface\n";
-      print $FILEnat "nft add rule inet natPOSTROUTING oifname $iface counter dns-post-$iface\n";
+      print $FILEfilter "-A OUTPUT -j fwd-$iface\n";
+      print $FILEnat "-A OUTPUT -j pre-$iface\n";
+      print $FILEnat "-A POSTROUTING -o $iface -j post-$iface\n";
+      print $FILEfilter "-A OUTPUT -j dns-fwd-$iface\n";
+      print $FILEnat "-A OUTPUT -j dns-pre-$iface\n";
+      print $FILEnat "-A POSTROUTING -o $iface -j dns-post-$iface\n";
 		} else {
 			if ( -e $cfg->find('config/@path')."/$interfacedir/network" ) {
 				open(my $cf, "<", $cfg->find('config/@path')."/$interfacedir/network") or die "cannot open < ".$cfg->find('config/@path')."/$interfacedir/network".": $!";
@@ -992,24 +979,24 @@ if ($fw_privclients) {
 					chomp($line);
 					$line =~ s/[ \t]*#.*//;
 					$line =~ m/^[ \t]*$/ && next;
-	        print $FILEfilter "nft add rule inet filter INPUT inet saddr $line iifname $iface counter in-$iface\n";
-	        print $FILEfilter "nft add rule inet filter FORWARD inet saddr $line iifname $iface counter fwd-$iface\n";
-	        print $FILEfilter "nft add rule inet filter INPUT inet saddr $line iifname $iface counter dns-in-$iface\n";
-	        print $FILEfilter "nft add rule inet filter FORWARD inet saddr $line iifname $iface counter dns-fwd-$iface\n";
+	        print $FILEfilter "-A INPUT -s $line -i $iface -j in-$iface\n";
+	        print $FILEfilter "-A FORWARD -s $line -i $iface -j fwd-$iface\n";
+	        print $FILEfilter "-A INPUT -s $line -i $iface -j dns-in-$iface\n";
+	        print $FILEfilter "-A FORWARD -s $line -i $iface -j dns-fwd-$iface\n";
 				}
 				close($cf);
 			} else {
 	      print STDERR "WARNING: Interface $iface has no network file\n";
 			}
-	    print $FILEnat "nft add rule inet natPREROUTING iifname $iface counter pre-$iface\n";
-	    print $FILEnat "nft add rule inet natPOSTROUTING oifname $iface counter post-$iface\n";
-	    print $FILEnat "nft add rule inet natPREROUTING iifname $iface counter dns-pre-$iface\n";
-	    print $FILEnat "nft add rule inet natPOSTROUTING oifname $iface counter dns-post-$iface\n";
+	    print $FILEnat "-A PREROUTING -i $iface -j pre-$iface\n";
+	    print $FILEnat "-A POSTROUTING -o $iface -j post-$iface\n";
+	    print $FILEnat "-A PREROUTING -i $iface -j dns-pre-$iface\n";
+	    print $FILEnat "-A POSTROUTING -o $iface -j dns-post-$iface\n";
 		}
 	}
 	print "Loopback Interface is fine\n";
-	print $FILEfilter "nft add rule inet filter OUTPUT counter accept oifname \"lo\"\n";
-	print $FILEfilter "nft add rule inet filter INPUT	 counter accept iifname \"lo\"\n";
+	print $FILEfilter "-A OUTPUT	-j ACCEPT -o lo\n";
+	print $FILEfilter "-A INPUT		-j ACCEPT -i lo\n";
 	if ( -x $cfg->find('config/@path')."/script-pre" ) {
 		print "Hook: script-pre\n";
 		system($cfg->find('config/@path')."/script-pre");
