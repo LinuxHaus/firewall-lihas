@@ -77,13 +77,16 @@ sub try_load {
   }
 }
 
+use Module::Load::Conditional qw[can_load];
+$Module::Load::Conditional::VERBOSE = 0;
+
 use XML::Application::Config;
 use POE qw(Component::Client::Ping Component::Client::DNS );
 # use Test::More skip_all => "Derzeit keine Tests";
 use lib "/etc/firewall.lihas.d/lib";
 my $module = 'POE::Component::Server::HTTP';
 my $have_httpd=0;
-if (try_load($module)) {
+if (check_install(module =>POE::Component::Server::HTTP)) {
 	$have_httpd = 1;
 } else {
 	$have_httpd = 0;
