@@ -279,7 +279,7 @@ echo COMMIT >> $FILE
 }
 
 do_stop () {
-  iptables-restore < /etc/firewall.lihas.d/iptables-accept
+  nft -f /etc/firewall.lihas.d/iptables-accept
 }
 
 FILE=$TMPDIR/iptables
