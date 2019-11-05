@@ -17,37 +17,38 @@
 
 # Requirements: libxml-application-config-perl liblog-log4perl-perl liblog-dispatch-perl
 
-$DEBUG=0;
-$DAEMON=1;
-use Getopt::Mixed;
-use Data::Dumper;
-
-use Log::Log4perl qw(:easy);
-Log::Log4perl::init('/etc/firewall.lihas.d/log4perl.conf');
-if (! Log::Log4perl::initialized()) { WARN "uninit"; } else { INFO "init"; }
-
-INFO "$0 starting\n";
-
-my ($option, $value);
-Getopt::Mixed::init("d debug>d");
-while (($option, $value) = Getopt::Mixed::nextOption()) {
-	if ($option=~/^d$/) {
-		$DEBUG=1;
-		$DAEMON=0;
-	} else {
-		ERROR "Unknown Option $option\n";
-	}
-}
-
 BEGIN {
-#	if ($DAEMON==1) {
+  $DEBUG=0;
+  $DAEMON=1;
+  use Getopt::Mixed;
+  use Data::Dumper;
+  use Module::Load;
+  
+  use Log::Log4perl qw(:easy);
+  Log::Log4perl::init('/etc/firewall.lihas.d/log4perl.conf');
+  if (! Log::Log4perl::initialized()) { WARN "uninit"; } else { INFO "init"; }
+  
+  INFO "$0 starting\n";
+  
+  my ($option, $value);
+  Getopt::Mixed::init("d debug>d");
+  while (($option, $value) = Getopt::Mixed::nextOption()) {
+  	if ($option=~/^d$/) {
+  		$DEBUG=1;
+  		$DAEMON=0;
+  	} else {
+  		ERROR "Unknown Option $option\n";
+  	}
+  }
+
+	if ($DAEMON==1) {
     use Net::Server::Daemonize qw(daemonize check_pid_file unlink_pid_file);    # or any other daemonization module
     daemonize(
 	  	'root',
 	  	'root',
 	  	'/var/run/firewall-lihasd.pid'
 	  );
-#	}
+	}
 }
 
 =head1 NAME
@@ -77,8 +78,8 @@ sub try_load {
   }
 }
 
-use Module::Load::Conditional qw[can_load];
-$Module::Load::Conditional::VERBOSE = 0;
+use Module::Load::Conditional qw[check_install];
+$Module::Load::Conditional::VERBOSE = 1;
 
 use XML::Application::Config;
 use POE qw(Component::Client::Ping Component::Client::DNS );
@@ -86,10 +87,12 @@ use POE qw(Component::Client::Ping Component::Client::DNS );
 use lib "/etc/firewall.lihas.d/lib";
 my $module = 'POE::Component::Server::HTTP';
 my $have_httpd=0;
-if (check_install(module =>POE::Component::Server::HTTP)) {
-	$have_httpd = 1;
-} else {
+my $rv = check_install(module => 'POE::Component::Server::HTTP');
+if ( not defined($rv) ) {
 	$have_httpd = 0;
+} else {
+	$have_httpd = 1;
+  Module::Load->load('POE::Component::Server::HTTP');
 }
 use HTTP::Status qw(:constants);
 use LiHAS::Firewall::Ping;
