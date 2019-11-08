@@ -22,7 +22,6 @@ use Log::Log4perl qw(:easy);
 Log::Log4perl::init('/etc/firewall.lihas.d/log4perl.conf');
 if (! Log::Log4perl::initialized()) { WARN "uninit"; } else { }
 use DBI;
-use Data::Dumper;
 
 my $expand_hostgroups=0;
 my $expand_portgroups=0;
