@@ -540,7 +540,7 @@ sub fw_masquerade {
 		  foreach my $line1 (split(/\n/,expand_hostgroup({dbh=>$dbh, line=>$line}))) {
 		  	foreach my $line2 (split(/\n/,expand_portgroup({dbh=>$dbh, line=>$line1}))) {
 					foreach my $line3 (split(/\n/,expand_ifacegroup({dbh=>$dbh, line=>$line2}))) {
-						$outline = "-A post-$iface";
+						$outline = "nft add rule inet nat post-$iface ";
 						if ( $do_comment ) {
 							$outline .= " comment \"$commentchain\"";
 						}
@@ -966,8 +966,8 @@ if ($fw_privclients) {
 				print $FILEfilter "nft add rule inet filter fwd-$iface inet saddr $line iifname $iface mark and 0x1f40 != 0x1f40 counter drop\n";
 		}
 		close($cf);
-		print $FILEnat "nft add rule inet natPREROUTING iifname $iface counter pre-$iface\n";
-		print $FILEnat "nft add rule inet natPOSTROUTING oifname $iface counter post-$iface\n";
+		print $FILEnat "nft add rule inet nat PREROUTING iifname $iface counter pre-$iface\n";
+		print $FILEnat "nft add rule inet nat POSTROUTING oifname $iface counter post-$iface\n";
 	}
 
 	print "Setting up Chains\n";
@@ -980,11 +980,11 @@ if ($fw_privclients) {
 		}
 		if ( $iface =~ /^lo$/ ) {
       print $FILEfilter "nft add rule inet filter OUTPUT counter fwd-$iface\n";
-      print $FILEnat "nft add rule inet natOUTPUT counter pre-$iface\n";
-      print $FILEnat "nft add rule inet natPOSTROUTING oifname $iface counter post-$iface\n";
+      print $FILEnat "nft add rule inet nat OUTPUT counter pre-$iface\n";
+      print $FILEnat "nft add rule inet nat POSTROUTING oifname $iface counter post-$iface\n";
       print $FILEfilter "nft add rule inet filter OUTPUT counter dns-fwd-$iface\n";
-      print $FILEnat "nft add rule inet natOUTPUT counter dns-pre-$iface\n";
-      print $FILEnat "nft add rule inet natPOSTROUTING oifname $iface counter dns-post-$iface\n";
+      print $FILEnat "nft add rule inet nat OUTPUT counter dns-pre-$iface\n";
+      print $FILEnat "nft add rule inet nat POSTROUTING oifname $iface counter dns-post-$iface\n";
 		} else {
 			if ( -e $cfg->find('config/@path')."/$interfacedir/network" ) {
 				open(my $cf, "<", $cfg->find('config/@path')."/$interfacedir/network") or die "cannot open < ".$cfg->find('config/@path')."/$interfacedir/network".": $!";
@@ -1001,10 +1001,10 @@ if ($fw_privclients) {
 			} else {
 	      print STDERR "WARNING: Interface $iface has no network file\n";
 			}
-	    print $FILEnat "nft add rule inet natPREROUTING iifname $iface counter pre-$iface\n";
-	    print $FILEnat "nft add rule inet natPOSTROUTING oifname $iface counter post-$iface\n";
-	    print $FILEnat "nft add rule inet natPREROUTING iifname $iface counter dns-pre-$iface\n";
-	    print $FILEnat "nft add rule inet natPOSTROUTING oifname $iface counter dns-post-$iface\n";
+	    print $FILEnat "nft add rule inet nat PREROUTING iifname $iface counter pre-$iface\n";
+	    print $FILEnat "nft add rule inet nat POSTROUTING oifname $iface counter post-$iface\n";
+	    print $FILEnat "nft add rule inet nat PREROUTING iifname $iface counter dns-pre-$iface\n";
+	    print $FILEnat "nft add rule inet nat POSTROUTING oifname $iface counter dns-post-$iface\n";
 		}
 	}
 	print "Loopback Interface is fine\n";
