@@ -263,7 +263,12 @@ if [ -e ./script-post ]; then
   . ./script-post
 fi
 
-echo *filter > $FILE
+cat <<'EOF' > $FILE
+*raw
+:PREROUTING ACCEPT
+:OUTPUT ACCEPT
+EOF
+echo *filter >> $FILE
 cat $FILEfilter | sed '/-[sd] dns-/d' >> $FILE
 cat $FILEfilter | sed -n '/-[sd] dns-/p' > $DATAPATH/dns-filter
 echo COMMIT >> $FILE
