@@ -69,9 +69,8 @@ darin finden die relevanten Dinge statt.
   - groups/hostgroup-* koennen statt Rechner-/Netzadressen auch
     dns-HOSTNAME
     z.B. dns-www.lihas.de enthalten.
-    DNS muss dafuer funktionieren, mehrere IPs pro Name sind ok,
-    allerdings wird nur ausgewertet was host -t a HOSTNAME in dem Moment
-    zurueckgibt, da die Regeln erzeugt werden
+    DNS muss dafuer funktionieren, mehrere IPs pro Name sind ok, derzeit nur IPv4.
+    firewall-lihasd.pl löst das regelmäßig auf.
 
   - fuer privclients, dnat, snat, masquerade, nolog, reject koennen statt
     Rechner-/Netzadressen/Ports/Interfaces auch Gruppen in
@@ -114,9 +113,9 @@ darin finden die relevanten Dinge statt.
     nicht nur die mit dem entsprechenden Protokoll
 
 - DNS-Aufloesung, dns-* Namen
-  - Hierfuer muss der firewall-lihas-dns Cronjob installiert werden
-  - Alle dns-* Statements werden aus interface-*, include und groups genommen und, falls die TTL abgelaufen ist, 
-    neu aufgeloest.
+  - Hierfür muss firewall-lihasd.pl laufen, wird bei passend installierten Abhängigkeiten automatisch gestartet.
+  - Alle dns-* Statements werden aus groups/hostgroup-* genommen und, falls die TTL abgelaufen ist, neu aufgeloest.
+  - andere Dateien werden nicht ausgewertet, hostgroup ist hier Pflicht.
 
 - ipset Support
   - Konfiguration in config.xml
