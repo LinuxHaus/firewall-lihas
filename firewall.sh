@@ -91,34 +91,34 @@ HAVE_ULOG=0
 HAVE_IPSET=0
 # check availability of modules:
 iptables -N lihas-moduletest
-iptables -A lihas-moduletest $CONNSTATE 2>/dev/null
+iptables -A lihas-moduletest $CONNSTATE >/dev/null 2>&1
 if iptables-save | egrep -q 'lihas-moduletest.*-m state'; then
   CONNSTATE="-m state --state"
 else
   CONNSTATE="-m conntrack --ctstate"
 fi
 export CONNSTATE
-iptables -A lihas-moduletest -m comment --comment "test"
+iptables -A lihas-moduletest -m comment --comment "test" >/dev/null 2>&1
 if [ $? -eq 0 ]; then
   HAVE_COMMENT=1
 fi
-iptables -A lihas-moduletest -j LOG --log-prefix 'test'
+iptables -A lihas-moduletest -j LOG --log-prefix 'test' >/dev/null 2>&1
 if [ $? -eq 0 ]; then
   HAVE_LOG=1
 fi
-iptables -A lihas-moduletest -j ULOG --ulog-prefix 'test'
+iptables -A lihas-moduletest -j ULOG --ulog-prefix 'test' >/dev/null 2>&1
 if [ $? -eq 0 ]; then
   HAVE_ULOG=1
 fi
 # check if ipset is available
 if [ type -a ipset > /dev/null ]; then
-  ipset create -exist lihas-moduletest bitmap:ip,mac range 127.0.0.0/24
+  ipset create -exist lihas-moduletest bitmap:ip,mac range 127.0.0.0/24 >/dev/null 2>&1
   if [ $? -eq 0 ]; then
-    iptables -A lihas-moduletest -m set --match-set lihas-moduletest src,src 2>/dev/null >&2
+    iptables -A lihas-moduletest -m set --match-set lihas-moduletest src,src >/dev/null 2>&1
     if [ $? -eq 0 ]; then
       HAVE_IPSET=1
     fi
-    iptables -F lihas-moduletest 2>/dev/null >&2
+    iptables -F lihas-moduletest >/dev/null 2>&1
     ipset destroy lihas-moduletest
   fi
 fi
@@ -263,7 +263,12 @@ if [ -e ./script-post ]; then
   . ./script-post
 fi
 
-echo *filter > $FILE
+cat <<'EOF' > $FILE
+*raw
+:PREROUTING ACCEPT
+:OUTPUT ACCEPT
+EOF
+echo *filter >> $FILE
 cat $FILEfilter | sed '/-[sd] dns-/d' >> $FILE
 cat $FILEfilter | sed -n '/-[sd] dns-/p' > $DATAPATH/dns-filter
 echo COMMIT >> $FILE
@@ -279,7 +284,7 @@ echo COMMIT >> $FILE
 }
 
 do_stop () {
-  nft -f /etc/firewall.lihas.d/iptables-accept
+  iptables-restore < /etc/firewall.lihas.d/iptables-accept
 }
 
 FILE=$TMPDIR/iptables

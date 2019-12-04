@@ -1,16 +1,20 @@
-# Translated by iptables-restore-translate v1.8.2 on Tue Nov  5 13:45:55 2019
-add table ip mangle
-add chain ip mangle PREROUTING { type filter hook prerouting priority -150; policy accept; }
-add chain ip mangle INPUT { type filter hook input priority -150; policy accept; }
-add chain ip mangle FORWARD { type filter hook forward priority -150; policy accept; }
-add chain ip mangle OUTPUT { type route hook output priority -150; policy accept; }
-add chain ip mangle POSTROUTING { type filter hook postrouting priority -150; policy accept; }
-add table ip nat
-add chain ip nat PREROUTING { type nat hook prerouting priority -100; policy accept; }
-add chain ip nat POSTROUTING { type nat hook postrouting priority 100; policy accept; }
-add chain ip nat OUTPUT { type nat hook output priority -100; policy accept; }
-add table ip filter
-add chain ip filter INPUT { type filter hook input priority 0; policy accept; }
-add chain ip filter FORWARD { type filter hook forward priority 0; policy accept; }
-add chain ip filter OUTPUT { type filter hook output priority 0; policy accept; }
-# Completed on Tue Nov  5 13:45:55 2019
+*raw
+:PREROUTING ACCEPT
+:OUTPUT ACCEPT
+*mangle
+:PREROUTING ACCEPT
+:INPUT ACCEPT
+:FORWARD ACCEPT
+:OUTPUT ACCEPT
+:POSTROUTING ACCEPT
+COMMIT
+*nat
+:PREROUTING ACCEPT
+:POSTROUTING ACCEPT
+:OUTPUT ACCEPT
+COMMIT
+*filter
+:INPUT ACCEPT
+:FORWARD ACCEPT
+:OUTPUT ACCEPT
+COMMIT
