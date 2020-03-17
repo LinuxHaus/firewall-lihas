@@ -85,7 +85,7 @@ debian-prepkg: debian-preprepkg
 	sed -i 's#^Homepage:.*#Homepage: $(DEBIAN_HOMEPAGE)#; s#^Architecture:.*#Architecture: $(ARCH)#; /^#/d; s#^Description:.*#Description: $(DESC_SHORT)#; s#^ <insert long description, indented with spaces># $(DESC_LONG)#; s#^Depends: .*#Depends: $${misc:Depends}$(DEBIAN_DEPENDS)#; s#^Section: .*#Section: admin#; s#^Standards-Version: .*#Standards-Version: 3.9.6#; /^Depends:/aRecommends: $(DEBIAN_RECOMMENDS)' debian/control
 	sed -i 's/^Copyright:.*/Copyright: 2006-2014 Adrian Reyer <are@lihas.de>/; /likewise for another author/d; s#^Source:.*#Source: https://github.com/LinuxHaus/firewall-lihas#; /^#/d' debian/copyright
 	rm debian/*.ex debian/README.Debian debian/README.source debian/firewall-lihas.doc-base.EX
-	for file in /etc/firewall.lihas.d/config.xml /etc/firewall.lihas.d/iptables-accept /etc/firewall.lihas.d/log4perl.conf /etc/firewall.lihas.d/localhost; do echo $i >> debian/conffiles; done
+	for file in /etc/firewall.lihas.d/config.xml /etc/firewall.lihas.d/iptables-accept /etc/firewall.lihas.d/log4perl.conf /etc/firewall.lihas.d/localhost; do echo $$file >> debian/conffiles; done
 debian-dpkg:
 	dpkg-buildpackage -sa -rfakeroot -tc
 

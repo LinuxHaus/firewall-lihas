@@ -326,9 +326,41 @@ sub expand_portgroup {
 	return $resultline;
 }
 
+=head2 fw_mark
+
+fw_mark($dbh, $iface, $startpath, $commentchain)
+
+set special rules for features, e.g. dhcpd, natreflect
+=cut
+
+sub fw_mark {
+	my $dbh = $_[0];
+	my $iface = $_[1];
+	my $file = $_[2];
+	my $commentchain = $_[3];
+	my $outline = "";
+	open(my $markfile, "<", $file) or die "cannot open < $file: $!";
+	print STDERR "Handling $file\n";
+	foreach my $line (<$markfile>) {
+		$line =~ m/^#/ && next;
+		$line =~ m/^[ \t]*$/ && next;
+		$line =~ s/#.*//;
+		if ($line =~ /^include[\s]+([^\s]+)/) {
+			$commentchain .= " " . firewall_comment_add_key($dbh,"$1");
+			fw_mark($dbh, $iface, "$configpath/$1",$commentchain);
+		} elsif ($line =~ /^dhcpd/) {
+			print $FILEfilter "-A INPUT -i $iface -p udp --sport 68 --dport 67 -j ACCEPT\n";
+			print $FILEfilter "-A OUTPUT -o $iface -p udp --sport 67 --dport 68 -j ACCEPT\n";
+		} elsif ($line =~ /^natreflect/) {
+			print $FILEmangle "-A FORWARD -i $iface -o $iface -j CONNMARK --set-xmark 0x80000000/0x80000000\n";
+		}
+	}
+	close $markfile;
+}
+
 =head2 fw_nonat
 
-fw_nonat($dbh $iface, $startpath, $commentchain);
+fw_nonat($dbh, $iface, $startpath, $commentchain);
 
 =cut
 
@@ -1020,6 +1052,19 @@ if ($fw_privclients) {
 		print "Hook: script-pre\n";
 		system("$configpath/script-pre");
 	}
+	print "Special rules (dhcpd, natreflection)\n";
+	foreach my $iface (keys(%{$ifaces{"physical"}})) {
+		my $interfacedir="interface-$iface";
+		-s "$configpath/$interfacedir/mark" || next;
+		print STDERR "Found $configpath/$interfacedir/mark";
+		$commentchain=firewall_comment_add_key($dbh,"$interfacedir/mark");
+		my $iface = $interfacedir;
+		$iface =~ s/^interface-//;
+		foreach my $line (values(@{$comment{$iface}})) {
+			print "  ".$line;
+		}
+		fw_mark($dbh, $iface, "$configpath/$interfacedir/mark", $commentchain);
+	}
 	print "Avoiding NAT\n";
 	foreach my $iface (keys(%{$ifaces{logical}})) {
 		my $interfacedir="interface-$iface";
@@ -1116,6 +1161,8 @@ if ($fw_privclients) {
 		}
 		fw_policyrouting($dbh, $iface, "$configpath/$interfacedir/policy-routing", $commentchain);
 	}
+# natreflection, if conntrack bit 32 is set
+	print $FILEnat "-A POSTROUTING -m connmark --mark 0x80000000/0x80000000 -j MASQUERADE\n";
 } elsif ($expand_hostgroups) {
 	foreach my $line (<>) {
 		$line =~ m/^#/ && next;

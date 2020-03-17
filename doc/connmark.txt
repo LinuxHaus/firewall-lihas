@@ -1,0 +1,3 @@
+firewall-lihas verwendet intern 'CONNMARK' für Statusinformationen.
+Verwendete Bits:
+Bit 32, 0x80000000: eingehendes und ausgehendes Interface ist gleich für NAT-reflection

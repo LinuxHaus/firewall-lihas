@@ -84,7 +84,8 @@ darin finden die relevanten Dinge statt.
 
   - interface-NAME/mark
     Ein Keyword pro Zeile, derzeit bekannt:
-      dhcpd - Aktiviert Regeln, dass der Firewall DHCP-Anfragen auf dem Interface beantworten kann
+      dhcpd      - Erlaubt DHCP-Anfragen
+      natreflect - Maskiert Pakete an das Interface von dem Interface mit der eigenen IP um Connection Tracking zu erlauben
 
 - es gibt pro Routingtabelle ein Verzeichnis nach dem Muster
     policy-routing-TABELLENNAME
@@ -102,7 +103,7 @@ darin finden die relevanten Dinge statt.
     -> 10.4.2.1 ueber eth6 wird das Defaultgateway
 
   - policy-routing-TABELLENNAME/key
-    Zahl die mit fwmark gesetzt wird, sollte eindeutig sein pro System, HEX, bsp 0x53
+    Zahl die mit fwmark gesetzt wird, sollte eindeutig sein pro System, HEX, bsp 0x53, Wert <= 0xff
 
 - Verzeichnis groups
   - Datei hostgroup-GROUPNAME
