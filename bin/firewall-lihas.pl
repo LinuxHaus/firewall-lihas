@@ -340,7 +340,6 @@ sub fw_mark {
 	my $commentchain = $_[3];
 	my $outline = "";
 	open(my $markfile, "<", $file) or die "cannot open < $file: $!";
-	print STDERR "Handling $file\n";
 	foreach my $line (<$markfile>) {
 		$line =~ m/^#/ && next;
 		$line =~ m/^[ \t]*$/ && next;
@@ -1056,7 +1055,6 @@ if ($fw_privclients) {
 	foreach my $iface (keys(%{$ifaces{"physical"}})) {
 		my $interfacedir="interface-$iface";
 		-s "$configpath/$interfacedir/mark" || next;
-		print STDERR "Found $configpath/$interfacedir/mark";
 		$commentchain=firewall_comment_add_key($dbh,"$interfacedir/mark");
 		my $iface = $interfacedir;
 		$iface =~ s/^interface-//;
