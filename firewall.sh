@@ -242,19 +242,6 @@ sync
 . ./localhost
 sync
 
-lihas_ipt_mark_dhcpd () {
-  iface=$1
-  IPT_FILTER "-A INPUT -i $iface -p udp --sport 68 --dport 67 -j ACCEPT"
-  IPT_FILTER "-A OUTPUT -o $iface -p udp --sport 67 --dport 68 -j ACCEPT"
-}
-for iface in interface-*; do
-  iface=${iface#interface-}
-  if [ -e interface-$iface/mark ]; then
-    [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
-    grep -qwi dhcpd interface-$iface/mark && lihas_ipt_mark_dhcpd "$iface"
-  fi
-done
-
 for chain in INPUT OUTPUT FORWARD; do
   IPT_FILTER "-A $chain -j $TARGETLOG"
 done
