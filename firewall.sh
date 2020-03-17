@@ -41,6 +41,7 @@ echo -n > $LOGSTARTUP
 [ -x "$DAEMON" ] || exit 0
 
 FILE=$TMPDIR/iptables
+FILEraw=$TMPDIR/iptables-raw
 FILEfilter=$TMPDIR/iptables-filter
 FILEnat=$TMPDIR/iptables-nat
 FILEmangle=$TMPDIR/iptables-mangle
@@ -51,7 +52,7 @@ if [ -e $CONFIGDIR/config.xml ]; then
   DATABASE=$DATAPATH/db.sqlite
 fi
 
-export CONFIGDIR LIBDIR TMPDIR FILE FILEfilter FILEnat FILEmangle TARGETLOG DATABASE DATAPATH
+export CONFIGDIR LIBDIR TMPDIR FILE FILEraw FILEfilter FILEnat FILEmangle TARGETLOG DATABASE DATAPATH
 if getent group www-data >/dev/null 2>&1; then
   mkdir -p "$DATAPATH"
   chgrp www-data $DATAPATH
@@ -82,8 +83,8 @@ set -a
 
 [ -d "$CONFIGDIR" ] && cd "$CONFIGDIR"
 
-rm $FILE $FILEfilter $FILEnat $FILEmangle
-exec 4>$FILE 5>$FILEfilter 6>$FILEnat 7>$FILEmangle
+rm $FILE $FILEfilter $FILEnat $FILEmangle $FILEraw
+exec 4>$FILE 5>$FILEfilter 6>$FILEnat 7>$FILEmangle 8>$FILEraw
 
 HAVE_COMMENT=0
 HAVE_LOG=0
@@ -263,11 +264,14 @@ if [ -e ./script-post ]; then
   . ./script-post
 fi
 
-cat <<'EOF' > $FILE
+cat >$FILE <<'EOF'
 *raw
 :PREROUTING ACCEPT
 :OUTPUT ACCEPT
 EOF
+cat $FILEraw | sed '/-[sd] dns-/d' >> $FILE
+cat $FILEraw | sed -n '/-[sd] dns-/p' > $DATAPATH/dns-raw
+echo COMMIT >> $FILE
 echo *filter >> $FILE
 cat $FILEfilter | sed '/-[sd] dns-/d' >> $FILE
 cat $FILEfilter | sed -n '/-[sd] dns-/p' > $DATAPATH/dns-filter
