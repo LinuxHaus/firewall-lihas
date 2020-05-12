@@ -954,10 +954,12 @@ if ($fw_privclients) {
 my $dh;
 my $commenthandle;
 my @interfaces;
+my @policies;
 
 if ($fw_privclients) {
   opendir($dh, $cfg->find('config/@path')) || die "can't opendir "."$configpath: $!\n";
   @interfaces = grep { /^interface-/ && -d "$configpath/$_/" } readdir($dh);
+	@policies = grep { /^policy-routing-/ && -d "$configpath/$_/" } readdir($dh);
 	closedir $dh;
 
 	print "Setting up IPSEC Spoof Protection\n";
@@ -1159,6 +1161,36 @@ if ($fw_privclients) {
 		}
 		fw_policyrouting($dbh, $iface, "$configpath/$interfacedir/policy-routing", $commentchain);
 	}
+	print "Policy Routing routing setup";
+	foreach my $policydir (@policies) {
+		my $policy = $policydir;
+		$policy =~ s/^policy-routing-//;
+		-s "$configpath/policy-routing-$policy/key" || next;
+		-s "$configpath/policy-routing-$policy/gateway" || next;
+		foreach my $line (values(@{$comment{$policydir}})) {
+			print "  ".$line;
+		}
+		my @cmd = ("ip", "route", "ls", "table", "$policy");
+		if ( system(@cmd) != 0 ) {
+			WARN "Please add '$policy' to /etc/iproute2/rt_tables or policy routing won't work. If you don't want policy routing, feel free to delete $configpath/policy-routing-$policy"
+		}
+		open(my $file, "<", "$configpath/policy-routing-$policy/key") or die "cannot open < "."$configpath/policy-routing-$policy/key".": $!";
+		my $policykey=(<$file>);
+		DEBUG "policykey: $policykey\n";
+		close($file);
+		open($file, "<", "$configpath/policy-routing-$policy/gateway") or die "cannot open < "."$configpath/policy-routing-$policy/gateway".": $!";
+#INCOMPLETE#		foreach my $line (<$file>) {
+#INCOMPLETE#			$line =~ s/[ \t]*#.*//;
+#INCOMPLETE#			$line =~ m/^[ \t]*$/ && next;
+#INCOMPLETE#			my ($type, $interface, $gateway) = split /[ \t]+/ $line;
+#INCOMPLETE#			open();
+#INCOMPLETE#			if ( $type == "PPP" ) {
+#INCOMPLETE#			} elsif ( $type == "NET" ) {
+#INCOMPLETE#			}
+#INCOMPLETE#		}
+		close($file);
+	}
+
 # natreflection, if conntrack bit 32 is set
 	print $FILEnat "-A POSTROUTING -m connmark --mark 0x80000000/0x80000000 -j MASQUERADE\n";
 } elsif ($expand_hostgroups) {

@@ -111,6 +111,10 @@ iptables -A lihas-moduletest -j ULOG --ulog-prefix 'test' >/dev/null 2>&1
 if [ $? -eq 0 ]; then
   HAVE_ULOG=1
 fi
+iptables -A lihas-moduletest -j NFLOG --nflog-prefix 'test' >/dev/null 2>&1
+if [ $? -eq 0 ]; then
+  HAVE_NFLOG=1
+fi
 # check if ipset is available
 if [ type -a ipset > /dev/null ]; then
   ipset create -exist lihas-moduletest bitmap:ip,mac range 127.0.0.0/24 >/dev/null 2>&1
@@ -131,10 +135,14 @@ if [ $TARGETLOG == "LOG" ] && [ $HAVE_LOG -eq 1 ]; then
   TARGETLOG=LOG
 elif [ $TARGETLOG == "ULOG" ] && [ $HAVE_ULOG -eq 1 ]; then
   TARGETLOG=ULOG
+elif [ $TARGETLOG == "NFLOG" ] && [ $HAVE_NFLOG -eq 1 ]; then
+  TARGETLOG=NFLOG
 elif [ $HAVE_LOG -eq 1 ]; then
   TARGETLOG=LOG
 elif [ $HAVE_ULOG -eq 1 ]; then
   TARGETLOG=ULOG
+elif [ $HAVE_NFLOG -eq 1 ]; then
+  TARGETLOG=NFLOG
 fi
 
 export TARGETLOG HAVE_COMMENT HAVE_LOG HAVE_ULOG HAVE_IPSET
