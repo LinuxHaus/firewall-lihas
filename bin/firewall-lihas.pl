@@ -457,12 +457,14 @@ sub fw_dnat {
 								}
 							}
 						} else {
-							if ( $dnet =~ m/ipset-(.*)/ ) {
+							if ( $dnet =~ m/^ipset-(.*)/ ) {
 								$outline .= " -m set --match-set $1 dst";
 							} else {
 								$outline .= " -d $dnet";
 							}
-							if ( $dport =~ /^0$/ ) {
+							if ( $mnet =~ m/^jump-(.*)/ ) {
+								print $FILEnat "$outline -j $1\n";
+							} elsif ( $dport =~ /^0$/ ) {
 								print $FILEnat "$outline -p $proto -j DNAT --to-destination $mnet\n";
 							} else {
 								$ndport =~ s/:/-/g;
