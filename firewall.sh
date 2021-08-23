@@ -153,12 +153,8 @@ export TARGETLOG HAVE_COMMENT HAVE_LOG HAVE_ULOG HAVE_IPSET
 . $LIBDIR/iptables-wrapper.sh
 . $LIBDIR/feature-portal.sh
 
-echo "Allowing all established Connections"
 for chain in INPUT OUTPUT FORWARD; do
   IPT_FILTER ":$chain DROP"
-done
-for chain in INPUT OUTPUT FORWARD; do
-  IPT_FILTER "-A $chain $CONNSTATE ESTABLISHED,RELATED -j ACCEPT"
 done
 for chain in PREROUTING POSTROUTING OUTPUT; do
   IPT_NAT ":$chain ACCEPT"
@@ -180,6 +176,10 @@ for iface in interface-*; do
   IPT_NAT ":post-$iface -"
   IPT_NAT ":dns-pre-$iface -"
   IPT_NAT ":dns-post-$iface -"
+done
+echo "Allowing all established Connections"
+for chain in INPUT OUTPUT FORWARD; do
+  IPT_FILTER "-A $chain $CONNSTATE ESTABLISHED,RELATED -j ACCEPT"
 done
 
 echo "Policy Routing"
