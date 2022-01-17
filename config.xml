@@ -26,6 +26,7 @@
     </ipset>
   </ipsets>
   <feature>
+    <counter enabled="0"/>
     <connectivity enabled="0">
       <test target="line1.example.org" rt_table="line1" />
     </connectivity>

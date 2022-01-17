@@ -137,6 +137,14 @@ darin finden die relevanten Dinge statt.
     - wenn 'src' matched, springe zu existierendem target TARGET, z.B. 
     1.1.1.1 jump-pre-eth0 tcp 0 0
 
+- accounting Support:
+  Aktiviert bedeutet das für jedes Paket 1 zusätzlichen Jump
+  - config.xml: /applicationconfig/application/feature/counter@enabled
+  - counter: Wie localhost, gedacht für Dinge wie
+    IPT_FILTER "-A counter -i eth0"
+    IPT_FILTER "-A counter -o eth0"
+  - Auswertung: extern, bsp `iptables -L -Z counter -vx `
+
 Berechtigungen und DNAT werden an dem Interface konfiguriert, an dem der Client haengt.
 SNAT und Masquerading werden am ausgehenden Interface konfiguriert.
 

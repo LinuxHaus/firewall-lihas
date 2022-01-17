@@ -20,6 +20,7 @@ SCRIPTNAME=/etc/init.d/$NAME
 CONFIGDIR=/etc/firewall.lihas.d
 LIBDIR=/usr/lib/firewall-lihas
 TMPDIR=${TMPDIR:-/tmp}
+FEATURE_COUNTER=0
 
 DATAPATH=/var/lib/firewall-lihas
 DATABASE=$DATAPATH/db.sqlite
@@ -48,8 +49,9 @@ FILEmangle=$TMPDIR/iptables-mangle
 
 
 if [ -e $CONFIGDIR/config.xml ]; then
-  DATAPATH=$(xmlstarlet sel -t -v /applicationconfig/application/config/@db_dbd /etc/firewall.lihas.d/config.xml)
+  DATAPATH=$(xmlstarlet sel -t -v /applicationconfig/application/config/@db_dbd $CONFIGDIR/config.xml)
   DATABASE=$DATAPATH/db.sqlite
+  FEATURE_COUNTER=$(xmlstarlet sel -t -v /applicationconfig/application/feature/counter/@enabled $CONFIGDIR/config.xml || echo -n ${FEATURE_COUNTER:-0})
 fi
 
 export CONFIGDIR LIBDIR TMPDIR FILE FILEraw FILEfilter FILEnat FILEmangle TARGETLOG DATABASE DATAPATH
@@ -177,6 +179,13 @@ for iface in interface-*; do
   IPT_NAT ":dns-pre-$iface -"
   IPT_NAT ":dns-post-$iface -"
 done
+if [ $FEATURE_COUNTER == "1" ]; then
+  echo "Setting up counter infrastructure"
+  IPT_FILTER ":counter -"
+  for chain in INPUT OUTPUT FORWARD; do
+    IPT_FILTER "-A $chain -j counter"
+  done
+fi
 echo "Allowing all established Connections"
 for chain in INPUT OUTPUT FORWARD; do
   IPT_FILTER "-A $chain $CONNSTATE ESTABLISHED,RELATED -j ACCEPT"
