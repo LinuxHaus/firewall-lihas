@@ -20,7 +20,8 @@
 BEGIN {
   $DEBUG=0;
   $DAEMON=1;
-  use Getopt::Mixed;
+	use Getopt::Long qw(GetOptions);
+	Getopt::Long::Configure qw(gnu_getopt);
   use Data::Dumper;
   use Module::Load;
   
@@ -30,16 +31,10 @@ BEGIN {
   
   INFO "$0 starting\n";
   
-  my ($option, $value);
-  Getopt::Mixed::init("d debug>d");
-  while (($option, $value) = Getopt::Mixed::nextOption()) {
-  	if ($option=~/^d$/) {
-  		$DEBUG=1;
-  		$DAEMON=0;
-  	} else {
-  		ERROR "Unknown Option $option\n";
-  	}
-  }
+	GetOptions(
+		'debug|d' => \&DEBUG
+	) or ERROR "Unknown Option\n";
+	if ($DEBUG) { $DAEMON=0; }
 
 	if ($DAEMON==1) {
     use Net::Server::Daemonize qw(daemonize check_pid_file unlink_pid_file);    # or any other daemonization module

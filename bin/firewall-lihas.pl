@@ -31,34 +31,20 @@ my $TARGETLOG="LOG";
 our $do_comment=$ENV{'HAVE_COMMENT'};
 our %policymark;
 my $CONNSTATE=$ENV{'CONNSTATE'};
-use Getopt::Mixed;
-my ($option, $value);
-Getopt::Mixed::init("H P s d f v l=s c=s comment>v conntrack>c firewall>f expand-hostgroup>H expand-portgroup>P shaping>s log>l debug>d");
-while (($option, $value) = Getopt::Mixed::nextOption()) {
-	if ($option=~/^H$/) {
-		$expand_hostgroups=1;
-	} elsif ($option=~/^l$/) {
-		$TARGETLOG=$value;
-	} elsif ($option=~/^d$/) {
-		$DEBUG=1;
-	} elsif ($option=~/^P$/) {
-		$expand_portgroups=1;
-	} elsif ($option=~/^f$/) {
-		$fw_privclients=1;
-	} elsif ($option=~/^s$/) {
-		$do_shaping=1;
-		WARN "Shaping is not yet implemented";
-	} elsif ($option=~/^v$/) {
-		$do_comment=1;
-		WARN "Comments are not yet fully implemented";
-	} elsif ($option=~/^c$/) {
-		$do_conntrack=1;
-		WARN "Connection tracking synchronization is not yet implemented";
-	} else {
-		ERROR "Unknown Option $option\n";
-	}
-}
-Getopt::Mixed::cleanup();
+use Getopt::Long qw(GetOptions);
+Getopt::Long::Configure qw(gnu_getopt);
+GetOptions(
+	'expand-hostgroup|H' => \$expand_hostgroups,
+	'log|l=s' => \$TARGETLOG,
+	'debug|d' => \$DEBUG,
+	'expand-portgroup|P' => \$expand_portgroups,
+  'firewall|f' => \$fw_privclients,
+  'shaping|s' => \$do_shaping,
+	'comment|v' => \$do_comment,
+	'conntrack|c' => \$do_conntrack
+) or ERROR "Unknown Option\n";
+if ($do_conntrack) { WARN "Connection tracking synchronization is not yet implemented"; }
+if ($do_comment) { WARN "Comments are not yet fully implemented"; }
 
 =head1 NAME
 firewall-lihas.pl
