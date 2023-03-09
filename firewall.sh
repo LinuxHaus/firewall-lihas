@@ -315,7 +315,9 @@ case "$1" in
 	    ipset_exit
 	    ipset_init
 	fi
-        iptables-restore < $FILE
+	if iptables-restore --test $FILE; then
+        	iptables-restore < $FILE
+	fi
 	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
 	firewall-lihasd.pl
 	if [ -s "$LOGSTARTUP" ]; then
@@ -345,7 +347,9 @@ case "$1" in
 	    ipset_exit
 	    ipset_init
 	fi
-        iptables-restore < $FILE
+	if iptables-restore --test $FILE; then
+        	iptables-restore < $FILE
+	fi
 	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
 	kill -INT $(cat /var/run/firewall-lihasd.pid )
 	sleep 1
@@ -362,7 +366,9 @@ case "$1" in
 	    ipset_exit
 	    ipset_init
 	fi
-        iptables-restore < $FILE
+	if iptables-restore --test $FILE; then
+        	iptables-restore < $FILE
+	fi
 	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
 	kill -INT $(cat /var/run/firewall-lihasd.pid )
 	sleep 1
