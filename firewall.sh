@@ -21,6 +21,7 @@ CONFIGDIR=/etc/firewall.lihas.d
 LIBDIR=/usr/lib/firewall-lihas
 TMPDIR=${TMPDIR:-/tmp}
 FEATURE_COUNTER=0
+DOIPV6=false
 
 DATAPATH=/var/lib/firewall-lihas
 DATABASE=$DATAPATH/db.sqlite
@@ -46,6 +47,11 @@ FILEraw=$TMPDIR/iptables-raw
 FILEfilter=$TMPDIR/iptables-filter
 FILEnat=$TMPDIR/iptables-nat
 FILEmangle=$TMPDIR/iptables-mangle
+FILE6=$TMPDIR/iptables
+FILE6raw=$TMPDIR/iptables-raw
+FILE6filter=$TMPDIR/iptables-filter
+FILE6nat=$TMPDIR/iptables-nat
+FILE6mangle=$TMPDIR/iptables-mangle
 
 
 if [ -e $CONFIGDIR/config.xml ]; then
@@ -86,7 +92,7 @@ set -a
 [ -d "$CONFIGDIR" ] && cd "$CONFIGDIR"
 
 rm $FILE $FILEfilter $FILEnat $FILEmangle $FILEraw
-exec 4>$FILE 5>$FILEfilter 6>$FILEnat 7>$FILEmangle 8>$FILEraw
+exec 4>$FILE 5>$FILEfilter 6>$FILEnat 7>$FILEmangle 8>$FILEraw 9>$FILE6 10>$FILE6filter 11>$FILE6nat 12>$FILE6mangle 13>$FILE6raw
 
 HAVE_COMMENT=0
 HAVE_LOG=0
@@ -157,12 +163,15 @@ export TARGETLOG HAVE_COMMENT HAVE_LOG HAVE_ULOG HAVE_IPSET
 
 for chain in INPUT OUTPUT FORWARD; do
   IPT_FILTER ":$chain DROP"
+  IPT6_FILTER ":$chain DROP"
 done
 for chain in PREROUTING POSTROUTING OUTPUT; do
   IPT_NAT ":$chain ACCEPT"
+  IPT6_NAT ":$chain ACCEPT"
 done
 for chain in PREROUTING INPUT FORWARD OUTPUT POSTROUTING; do
   IPT_MANGLE ":$chain ACCEPT"
+  IPT6_MANGLE ":$chain ACCEPT"
 done
 
 for iface in interface-*; do
@@ -173,22 +182,35 @@ for iface in interface-*; do
   IPT_FILTER ":dns-in-$iface -"
   IPT_FILTER ":dns-out-$iface -"
   IPT_FILTER ":dns-fwd-$iface -"
+  IPT6_FILTER ":in-$iface -"
+  IPT6_FILTER ":out-$iface -"
+  IPT6_FILTER ":fwd-$iface -"
+  IPT6_FILTER ":dns-in-$iface -"
+  IPT6_FILTER ":dns-out-$iface -"
+  IPT6_FILTER ":dns-fwd-$iface -"
 
   IPT_NAT ":pre-$iface -"
   IPT_NAT ":post-$iface -"
   IPT_NAT ":dns-pre-$iface -"
   IPT_NAT ":dns-post-$iface -"
+  IPT6_NAT ":pre-$iface -"
+  IPT6_NAT ":post-$iface -"
+  IPT6_NAT ":dns-pre-$iface -"
+  IPT6_NAT ":dns-post-$iface -"
 done
 if [ $FEATURE_COUNTER == "1" ]; then
   echo "Setting up counter infrastructure"
   IPT_FILTER ":counter -"
+  IPT6_FILTER ":counter -"
   for chain in INPUT OUTPUT FORWARD; do
     IPT_FILTER "-A $chain -j counter"
+    IPT6_FILTER "-A $chain -j counter"
   done
 fi
 echo "Allowing all established Connections"
 for chain in INPUT OUTPUT FORWARD; do
   IPT_FILTER "-A $chain $CONNSTATE ESTABLISHED,RELATED -j ACCEPT"
+  IPT6_FILTER "-A $chain $CONNSTATE ESTABLISHED,RELATED -j ACCEPT"
 done
 
 echo "Policy Routing"
@@ -196,7 +218,7 @@ portal_setup
 
 firewall-lihas -f --log=$TARGETLOG
 
-echo Policy Routing
+echo Policy Routing - no IPv6 as of now
 for policy in policy-routing-*; do
   policy=${policy#policy-routing-}
   if [ -e policy-routing-$policy/key ]; then
@@ -235,6 +257,8 @@ for policy in policy-routing-*; do
 done
 IPT_MANGLE "-I PREROUTING -j MARK --set-mark 0"
 IPT_MANGLE "-I OUTPUT -j MARK --set-mark 0"
+IPT6_MANGLE "-I PREROUTING -j MARK --set-mark 0"
+IPT6_MANGLE "-I OUTPUT -j MARK --set-mark 0"
 for iface in interface-*; do
   iface=${iface#interface-}
   if [ -e interface-$iface/policy-routing ]; then
@@ -245,9 +269,13 @@ for iface in interface-*; do
       if [ $dport == "0" ]; then
           IPT_MANGLE "-A OUTPUT -s $snet -d $dnet -p $proto -j MARK --set-mark $mark" 
           IPT_MANGLE "-A PREROUTING -s $snet -d $dnet -p $proto -j MARK --set-mark $mark"
+          IPT6_MANGLE "-A OUTPUT -s $snet -d $dnet -p $proto -j MARK --set-mark $mark" 
+          IPT6_MANGLE "-A PREROUTING -s $snet -d $dnet -p $proto -j MARK --set-mark $mark"
       else
           IPT_MANGLE "-A OUTPUT -s $snet -d $dnet -p $proto --dport $dport -j MARK --set-mark $mark"
           IPT_MANGLE "-A PREROUTING -s $snet -d $dnet -p $proto --dport $dport -j MARK --set-mark $mark"
+          IPT6_MANGLE "-A OUTPUT -s $snet -d $dnet -p $proto --dport $dport -j MARK --set-mark $mark"
+          IPT6_MANGLE "-A PREROUTING -s $snet -d $dnet -p $proto --dport $dport -j MARK --set-mark $mark"
       fi
     done
   fi
@@ -261,11 +289,16 @@ sync
 
 for chain in INPUT OUTPUT FORWARD; do
   IPT_FILTER "-A $chain -j $TARGETLOG"
+  IPT6_FILTER "-A $chain -j $TARGETLOG"
 done
 
 if [ -e ./script-post ]; then
   echo "Hook: script-post"
   . ./script-post
+fi
+if [ -e ./script6-post ]; then
+  echo "Hook: script6-post"
+  . ./script6-post
 fi
 
 cat >$FILE <<'EOF'
@@ -288,19 +321,42 @@ echo *nat >> $FILE
 cat $FILEnat | sed '/-[sd] dns-/d; /--to-destination dns/d' >> $FILE
 cat $FILEnat | sed -n '/-[sd] dns-/p; /--to-destination dns/p' > $DATAPATH/dns-nat
 echo COMMIT >> $FILE
+cat >$FILE6 <<'EOF'
+*raw
+:PREROUTING ACCEPT
+:OUTPUT ACCEPT
+EOF
+cat $FILE6raw | sed '/-[sd] dns-/d' >> $FILE6
+cat $FILE6raw | sed -n '/-[sd] dns-/p' > $DATAPATH/dns-raw
+echo COMMIT >> $FILE6
+echo *filter >> $FILE6
+cat $FILE6filter | sed '/-[sd] dns-/d' >> $FILE6
+cat $FILE6filter | sed -n '/-[sd] dns-/p' > $DATAPATH/dns-filter
+echo COMMIT >> $FILE6
+echo *mangle >> $FILE6
+cat $FILE6mangle | sed '/-[sd] dns-/d' >> $FILE6
+cat $FILE6mangle | sed -n '/-[sd] dns-/p' > $DATAPATH/dns-mangle
+echo COMMIT >> $FILE6
+echo *nat >> $FILE6
+cat $FILE6nat | sed '/-[sd] dns-/d; /--to-destination dns/d' >> $FILE6
+cat $FILE6nat | sed -n '/-[sd] dns-/p; /--to-destination dns/p' > $DATAPATH/dns-nat
+echo COMMIT >> $FILE6
 
 }
 
 do_stop () {
   iptables-restore < /etc/firewall.lihas.d/iptables-accept
+  $DOIPV6 && ip6tables-restore < /etc/firewall.lihas.d/iptables-accept
 }
 
 FILE=$TMPDIR/iptables
+FILE6=$TMPDIR/ip6tables
 
 case "$1" in
   test)
         do_start
 	echo "Check $FILE to see what it would look like"
+	$DOIPV6 && echo "Check $FILE6 to see what it would look like"
 	if [ -s "$LOGSTARTUP" ]; then
 	  echo
 	  echo "********************************************************************************"
@@ -315,11 +371,16 @@ case "$1" in
 	    ipset_exit
 	    ipset_init
 	fi
+	firewall-lihasd.pl
+	$DOIPV6 && firewall6-lihasd.pl
 	if iptables-restore --test $FILE; then
         	iptables-restore < $FILE
 	fi
+	if $DOIPV6 && ip6tables-restore --test $FILE6; then
+        	ip6tables-restore < $FILE6
+	fi
 	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
-	firewall-lihasd.pl
+	$DOIPV6 && [ -x /etc/firewall.lihas.d/fw6_post_rules ] && /etc/firewall.lihas.d/fw6_post_rules
 	if [ -s "$LOGSTARTUP" ]; then
 	  echo
 	  echo "********************************************************************************"
@@ -334,7 +395,9 @@ case "$1" in
 	    ipset_exit
 	fi
 	kill -INT $(cat /var/run/firewall-lihasd.pid )
+	$DOIPV6 && kill -INT $(cat /var/run/firewall6-lihasd.pid )
 	ps ax | awk '$5 ~ /^\/usr\/bin\/perl$/ && $6 ~ /firewall-lihasd.pl/ {print $1}' | xargs --no-run-if-empty kill
+	$DOIPV6 && ( ps ax | awk '$5 ~ /^\/usr\/bin\/perl$/ && $6 ~ /firewall6-lihasd.pl/ {print $1}' | xargs --no-run-if-empty kill )
         ;;
   reload|force-reload)
         #
@@ -350,10 +413,15 @@ case "$1" in
 	if iptables-restore --test $FILE; then
         	iptables-restore < $FILE
 	fi
+	if $DOIPV6 && ip6tables-restore --test $FILE6; then
+        	ip6tables-restore < $FILE6
 	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
+	$DOIPV6 && [ -x /etc/firewall.lihas.d/fw6_post_rules ] && /etc/firewall.lihas.d/fw6_post_rules
 	kill -INT $(cat /var/run/firewall-lihasd.pid )
+	$DOIPV6 && kill -INT $(cat /var/run/firewall6-lihasd.pid )
 	sleep 1
 	firewall-lihasd.pl
+	$DOIPV6 && firewall6-lihasd.pl
         ;;
   restart|force-reload)
         #
@@ -369,10 +437,16 @@ case "$1" in
 	if iptables-restore --test $FILE; then
         	iptables-restore < $FILE
 	fi
+	if $DOIPV6 && ip6tables-restore --test $FILE; then
+        	iptables-restore < $FILE
+	fi
 	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
+	$DOIPV6 && ( [ -x /etc/firewall.lihas.d/fw6_post_rules ] && /etc/firewall.lihas.d/fw6_post_rules )
 	kill -INT $(cat /var/run/firewall-lihasd.pid )
+	$DOIPV6 && kill -INT $(cat /var/run/firewall6-lihasd.pid )
 	sleep 1
 	firewall-lihasd.pl
+	$DOIPV6 && firewall6-lihasd.pl
         ;;
   *)
         #echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
