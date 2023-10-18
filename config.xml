@@ -3,6 +3,21 @@
 <applicationconfig version="0.2">
 <application name="LiHAS-Firewall">
   <config path="/etc/firewall.lihas.d" db_dbd="/var/lib/firewall-lihas" />
+  <database6>
+    <dbd connectorstring="dbi:SQLite:dbname=/var/lib/firewall-lihas/db6.sqlite"/>
+    <create>
+      <table name="hostnames" >CREATE TABLE IF NOT EXISTS hostnames ( hostname TEXT NOT NULL );</table>
+      <table name="dnshistory">CREATE TABLE IF NOT EXISTS dnshistory ( hostname TEXT NOT NULL, ip TEXT NOT NULL, time_first INTEGER NOT NULL, time_valid_till INTEGER NOT NULL, active INTEGER NOT NULL );</table>
+      <table name="hostnames_current">CREATE TABLE IF NOT EXISTS hostnames_current ( hostname TEXT NOT NULL, time_first INTEGER NOT NULL, time_valid_till INTEGER NOT NULL, ip TEXT NOT NULL );</table>
+      <table name="vars_num"  >CREATE TABLE IF NOT EXISTS vars_num ( name TEXT NOT NULL, value INTEGER );</table>
+      <index name="activedns" >CREATE INDEX IF NOT EXISTS activedns ON dnshistory (active, hostname);</index>
+      <table name="portal_clients">CREATE TABLE IF NOT EXISTS portal_clients ( id INTEGER PRIMARY KEY, portalname TEXT NOT NULL, ip TEXT NOT NULL, mac INTEGER NOT NULL, start_date TEXT NOT NULL, end_date TEXT NOT NULL, active INTEGER, userid INTEGER);</table>
+      <table name="portal_clienthistory">CREATE TABLE IF NOT EXISTS portal_clienthistory ( portalname TEXT NOT NULL, ip TEXT NOT NULL, mac INTEGER NOT NULL, start_date TEXT NOT NULL, end_date TEXT NOT NULL);</table>
+      <table name="portal_users">CREATE TABLE IF NOT EXISTS portal_users ( id INTEGER PRIMARY KEY, name TEXT NOT NULL, pass TEXT NOT NULL, start_date TEXT NOT NULL, end_date TEXT NOT NULL, max_duration TEXT, max_clients TEXT, start_use TEXT);</table>
+      <table name="portal_usershistory">CREATE TABLE IF NOT EXISTS portal_usershistory ( name TEXT NOT NULL, pass TEXT NOT NULL, start_date TEXT NOT NULL, end_date TEXT NOT NULL);</table>
+      <table name="fw_comments">CREATE TABLE IF NOT EXISTS fw_comments ( id INTEGER NOT NULL, file TEXT NOT NULL, comment TEXT);</table>
+    </create>
+  </database6>
   <database>
     <dbd connectorstring="dbi:SQLite:dbname=/var/lib/firewall-lihas/db.sqlite"/>
     <create>

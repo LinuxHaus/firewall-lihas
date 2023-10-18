@@ -22,6 +22,7 @@ LIBDIR=/usr/lib/firewall-lihas
 TMPDIR=${TMPDIR:-/tmp}
 FEATURE_COUNTER=0
 DOIPV6=false
+DOIPV4=true
 
 DATAPATH=/var/lib/firewall-lihas
 DATABASE=$DATAPATH/db.sqlite
@@ -345,7 +346,7 @@ echo COMMIT >> $FILE6
 }
 
 do_stop () {
-  iptables-restore < /etc/firewall.lihas.d/iptables-accept
+  $DOIPV4 && iptables-restore < /etc/firewall.lihas.d/iptables-accept
   $DOIPV6 && ip6tables-restore < /etc/firewall.lihas.d/iptables-accept
 }
 
@@ -355,7 +356,7 @@ FILE6=$TMPDIR/ip6tables
 case "$1" in
   test)
         do_start
-	echo "Check $FILE to see what it would look like"
+	$DOIPV4 && echo "Check $FILE to see what it would look like"
 	$DOIPV6 && echo "Check $FILE6 to see what it would look like"
 	if [ -s "$LOGSTARTUP" ]; then
 	  echo
@@ -371,15 +372,15 @@ case "$1" in
 	    ipset_exit
 	    ipset_init
 	fi
-	firewall-lihasd.pl
+	$DOIPV4 && firewall-lihasd.pl
 	$DOIPV6 && firewall6-lihasd.pl
-	if iptables-restore --test $FILE; then
+	if $DOIPV4 && iptables-restore --test $FILE; then
         	iptables-restore < $FILE
 	fi
 	if $DOIPV6 && ip6tables-restore --test $FILE6; then
         	ip6tables-restore < $FILE6
 	fi
-	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
+	$DOIPV4 && [ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
 	$DOIPV6 && [ -x /etc/firewall.lihas.d/fw6_post_rules ] && /etc/firewall.lihas.d/fw6_post_rules
 	if [ -s "$LOGSTARTUP" ]; then
 	  echo
@@ -394,9 +395,9 @@ case "$1" in
 	if [ "x$HAVE_IPSET" == "x1" ]; then
 	    ipset_exit
 	fi
-	kill -INT $(cat /var/run/firewall-lihasd.pid )
+	$DOIPV4 && kill -INT $(cat /var/run/firewall-lihasd.pid )
 	$DOIPV6 && kill -INT $(cat /var/run/firewall6-lihasd.pid )
-	ps ax | awk '$5 ~ /^\/usr\/bin\/perl$/ && $6 ~ /firewall-lihasd.pl/ {print $1}' | xargs --no-run-if-empty kill
+	$DOIPV4 && ( ps ax | awk '$5 ~ /^\/usr\/bin\/perl$/ && $6 ~ /firewall-lihasd.pl/ {print $1}' | xargs --no-run-if-empty kill )
 	$DOIPV6 && ( ps ax | awk '$5 ~ /^\/usr\/bin\/perl$/ && $6 ~ /firewall6-lihasd.pl/ {print $1}' | xargs --no-run-if-empty kill )
         ;;
   reload|force-reload)
@@ -410,17 +411,17 @@ case "$1" in
 	    ipset_exit
 	    ipset_init
 	fi
-	if iptables-restore --test $FILE; then
+	if $DOIPV4 && iptables-restore --test $FILE; then
         	iptables-restore < $FILE
 	fi
 	if $DOIPV6 && ip6tables-restore --test $FILE6; then
         	ip6tables-restore < $FILE6
-	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
+	$DOIPV4 && [ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
 	$DOIPV6 && [ -x /etc/firewall.lihas.d/fw6_post_rules ] && /etc/firewall.lihas.d/fw6_post_rules
-	kill -INT $(cat /var/run/firewall-lihasd.pid )
+	$DOIPV4 && kill -INT $(cat /var/run/firewall-lihasd.pid )
 	$DOIPV6 && kill -INT $(cat /var/run/firewall6-lihasd.pid )
 	sleep 1
-	firewall-lihasd.pl
+	$DOIPV4 && firewall-lihasd.pl
 	$DOIPV6 && firewall6-lihasd.pl
         ;;
   restart|force-reload)
@@ -434,18 +435,18 @@ case "$1" in
 	    ipset_exit
 	    ipset_init
 	fi
-	if iptables-restore --test $FILE; then
+	if $DOIPV4 && iptables-restore --test $FILE; then
         	iptables-restore < $FILE
 	fi
 	if $DOIPV6 && ip6tables-restore --test $FILE; then
         	iptables-restore < $FILE
 	fi
-	[ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
+	$DOIPV4 && ( [ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules )
 	$DOIPV6 && ( [ -x /etc/firewall.lihas.d/fw6_post_rules ] && /etc/firewall.lihas.d/fw6_post_rules )
-	kill -INT $(cat /var/run/firewall-lihasd.pid )
+	$DOIPV4 && kill -INT $(cat /var/run/firewall-lihasd.pid )
 	$DOIPV6 && kill -INT $(cat /var/run/firewall6-lihasd.pid )
 	sleep 1
-	firewall-lihasd.pl
+	$DOIPV4 && firewall-lihasd.pl
 	$DOIPV6 && firewall6-lihasd.pl
         ;;
   *)
