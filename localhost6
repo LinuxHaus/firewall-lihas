@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# Problem-Rueckmeldungen
+IPT6_FILTER -A INPUT -p ipv6-icmp --icmpv6-type 1 -j ACCEPT
+IPT6_FILTER -A INPUT -p ipv6-icmp --icmpv6-type 2 -j ACCEPT
+IPT6_FILTER -A INPUT -p ipv6-icmp --icmpv6-type 3 -j ACCEPT
+IPT6_FILTER -A INPUT -p ipv6-icmp --icmpv6-type 4 -j ACCEPT
+#IPT6_FILTER -A FORWARD -i $WAN_IF -p ipv6-icmp --icmpv6-type 1 -j ACCEPT
+#IPT6_FILTER -A FORWARD -i $WAN_IF -p ipv6-icmp --icmpv6-type 2 -j ACCEPT
+#IPT6_FILTER -A FORWARD -i $WAN_IF -p ipv6-icmp --icmpv6-type 3 -j ACCEPT
+#IPT6_FILTER -A FORWARD -i $WAN_IF -p ipv6-icmp --icmpv6-type 4 -j ACCEPT
+
+# Router und Neighbor Discovery ein- und ausgehend
+IPT6_FILTER -A INPUT -p ipv6-icmp --icmpv6-type 133 -j ACCEPT
+IPT6_FILTER -A INPUT -p ipv6-icmp --icmpv6-type 134 -j ACCEPT
+IPT6_FILTER -A INPUT -p ipv6-icmp --icmpv6-type 135 -j ACCEPT
+IPT6_FILTER -A INPUT -p ipv6-icmp --icmpv6-type 136 -j ACCEPT
+IPT6_FILTER -A OUTPUT -p ipv6-icmp --icmpv6-type 133 -j ACCEPT
+IPT6_FILTER -A OUTPUT -p ipv6-icmp --icmpv6-type 134 -j ACCEPT
+IPT6_FILTER -A OUTPUT -p ipv6-icmp --icmpv6-type 135 -j ACCEPT
+IPT6_FILTER -A OUTPUT -p ipv6-icmp --icmpv6-type 136 -j ACCEPT
+
+## Ping-Request an Firewall aus LAN und DMZ
+#IPT6_FILTER -A INPUT ! -i $WAN_IF -p ipv6-icmp --icmpv6-type 128 -j ACCEPT
+## Ping-Request von Firewall, LAN und DMZ
+#IPT6_FILTER -A OUTPUT -p ipv6-icmp --icmpv6-type 128 -j ACCEPT
+#IPT6_FILTER -A FORWARD ! -i $WAN_IF -p ipv6-icmp --icmpv6-type 128 -j ACCEPT

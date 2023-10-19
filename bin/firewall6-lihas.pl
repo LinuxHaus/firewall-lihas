@@ -249,7 +249,11 @@ sub parse_portgroup {
 			chop $line;
 			$line =~ m/^#/ && next;
 			$line =~ m/^[ \t]*$/ && next;
-			if ( $line =~ m/^(any|tcp|udp|icmp)[ \t]+portgroup-([^ ]*)(|[ \t])*(#.*|)$/ ) {
+			if ( $line =~ m/^icmp\W/ ) {
+				INFO "icmp is no valid protocol for ipv6, using ipv6-icmp instead";
+				$line =~ s/^icmp/ipv6-icnp/;
+			}
+			if ( $line =~ m/^(any|tcp|udp|ipv6-icmp)[ \t]+portgroup-([^ ]*)(|[ \t])*(#.*|)$/ ) {
 				my $tmpproto = $1;
 				my $tmpgrp = $2;
 				if (!defined $portgroup{$tmpgrp}{defined}) {
@@ -288,7 +292,7 @@ sub expand_portgroup {
 	my $replaceline='';
 	my $resultline='';
 	my $name = $line;
-	if ( $line =~ m/^(.*)[ \t]+(any|tcp|udp|icmp)[ \t]+portgroup-([a-zA-Z0-9_\.-]+)\b/ ) {
+	if ( $line =~ m/^(.*)[ \t]+(any|tcp|udp|ipv6-icmp)[ \t]+portgroup-([a-zA-Z0-9_\.-]+)\b/ ) {
 		my $base = $1;
 		my $proto = $2;
 		my $name = $3;
@@ -388,8 +392,12 @@ sub fw_nonat {
 						if ( $dport =~ /^0$/ ) {
 							$outline .= " -p $proto";
 						} else {
-							if ( $proto =~ /^icmp$/ ) {
-								$outline .= " -p $proto --icmp-type $dport";
+							if ( $proto =~ m/^icmp$/ ) {
+								INFO "icmp is no valid protocol for ipv6, using ipv6-icmp instead";
+								$proto =~ s/^icmp$/ipv6-icmp/;
+							}
+							if ( $proto =~ /^ipv6-icmp$/ ) {
+								$outline .= " -p $proto --icmpv6-type $dport";
 							} else {
 								$outline .= " -p $proto --dport $dport";
 							}
@@ -439,8 +447,12 @@ sub fw_dnat {
 							if ($dport =~ /^0$/ ) {
 								print $FILEnat "$outline -p $proto -j ACCEPT\n";
 							} else {
-								if ( $proto =~ /^icmp$/ ) {
-									print $FILEnat "$outline -p $proto --icmp-type $dport -j ACCEPT\n";
+								if ( $proto =~ m/^icmp$/ ) {
+									INFO "icmp is no valid protocol for ipv6, using ipv6-icmp instead";
+									$proto =~ s/^icmp$/ipv6-icmp/;
+								}
+								if ( $proto =~ /^ipv6-icmp$/ ) {
+									print $FILEnat "$outline -p $proto --icmpv6-type $dport -j ACCEPT\n";
 								} else {
 									print $FILEnat "$outline -p $proto --dport $dport -j ACCEPT\n";
 								}
@@ -457,8 +469,12 @@ sub fw_dnat {
 								print $FILEnat "$outline -p $proto -j DNAT --to-destination $mnet\n";
 							} else {
 								$ndport =~ s/:/-/g;
-								if ( $proto =~ /^icmp$/ ) {
-									print $FILEnat "$outline -p $proto --icmp-type $dport -j DNAT --to-destination $mnet:$ndport\n";
+								if ( $proto =~ m/^icmp$/ ) {
+									INFO "icmp is no valid protocol for ipv6, using ipv6-icmp instead";
+									$proto =~ s/^icmp$/ipv6-icmp/;
+								}
+								if ( $proto =~ /^ipv6-icmp$/ ) {
+									print $FILEnat "$outline -p $proto --icmpv6-type $dport -j DNAT --to-destination $mnet:$ndport\n";
 								} else {
 									print $FILEnat "$outline -p $proto --dport $dport -j DNAT --to-destination $mnet:$ndport\n";
 								}
@@ -507,8 +523,12 @@ sub fw_snat {
 							if ($dport =~ /^0$/ ) {
 								print $FILEnat "$outline -p $proto -j ACCEPT\n";
 							} else {
-								if ( $proto =~ /^icmp$/ ) {
-									print $FILEnat "$outline -p $proto --icmp-type $dport -j ACCEPT\n";
+								if ( $proto =~ m/^icmp$/ ) {
+									INFO "icmp is no valid protocol for ipv6, using ipv6-icmp instead";
+									$proto =~ s/^icmp$/ipv6-icmp/;
+								}
+								if ( $proto =~ /^ipv6-icmp$/ ) {
+									print $FILEnat "$outline -p $proto --icmpv6-type $dport -j ACCEPT\n";
 								} else {
 									print $FILEnat "$outline -p $proto --dport $dport -j ACCEPT\n";
 								}
@@ -522,8 +542,12 @@ sub fw_snat {
 							if ( $dport =~ /^0$/ ) {
 								print $FILEnat "$outline -p $proto -j SNAT --to-source $mnet\n";
 							} else {
-								if ( $proto =~ /^icmp$/ ) {
-									print $FILEnat "$outline -p $proto --icmp-type $dport -j SNAT --to-source $mnet\n";
+								if ( $proto =~ m/^icmp$/ ) {
+									INFO "icmp is no valid protocol for ipv6, using ipv6-icmp instead";
+									$proto =~ s/^icmp$/ipv6-icmp/;
+								}
+								if ( $proto =~ /^ipv6-icmp$/ ) {
+									print $FILEnat "$outline -p $proto --icmpv6-type $dport -j SNAT --to-source $mnet\n";
 								} else {
 									print $FILEnat "$outline -p $proto --dport $dport -j SNAT --to-source $mnet\n";
 								}
@@ -569,8 +593,12 @@ sub fw_masquerade {
 							$outline .= " -s $snet";
 						}
 		  			if ( $dport !~ /^0$/ ) {
-		  				if ( $proto =~ /^icmp$/ ) {
-		  					$outline .= " -p $proto --icmp-type $dport";
+							if ( $proto =~ m/^icmp$/ ) {
+								INFO "icmp is no valid protocol for ipv6, using ipv6-icmp instead";
+								$proto =~ s/^icmp$/ipv6-icmp/;
+							}
+		  				if ( $proto =~ /^ipv6-icmp$/ ) {
+		  					$outline .= " -p $proto --icmpv6-type $dport";
 		  				} else {
 		  					$outline .= " -p $proto --dport $dport";
 		  				}
@@ -626,8 +654,12 @@ sub fw_nologclients {
 						}
 						$outline .= " -p $proto";
 						if ( $dport !~ /^0$/ ) {
-							if ( $proto =~ /^icmp$/ ) {
-								$outline .= " --icmp-type $dport";
+							if ( $proto =~ m/^icmp$/ ) {
+								INFO "icmp is no valid protocol for ipv6, using ipv6-icmp instead";
+								$proto =~ s/^icmp$/ipv6-icmp/;
+							}
+							if ( $proto =~ /^ipv6-icmp$/ ) {
+								$outline .= " --icmpv6-type $dport";
 							} else {
 								$outline .= " --dport $dport";
 							}
@@ -684,8 +716,12 @@ sub fw_rejectclients {
 						}
 						$outline .= " -p $proto";
 						if ( $dport !~ /^0$/ ) {
-							if ( $proto =~ /^icmp$/ ) {
-								$outline .= " --icmp-type $dport";
+							if ( $proto =~ m/^icmp$/ ) {
+								INFO "icmp is no valid protocol for ipv6, using ipv6-icmp instead";
+								$proto =~ s/^icmp$/ipv6-icmp/;
+							}
+							if ( $proto =~ /^ipv6-icmp$/ ) {
+								$outline .= " --icmpv6-type $dport";
 							} else {
 								$outline .= " --dport $dport";
 							}
@@ -742,8 +778,13 @@ sub fw_privclients {
 						}
 						$outline .= " -p $proto";
 		  			if ( $dport !~ /^0$/ ) {
-		  				if ( $proto =~ /^icmp$/ ) {
-		  					$outline .= " --icmp-type $dport";
+							if ( $proto =~ m/^icmp$/ ) {
+								INFO "icmp is no valid protocol for ipv6, using ipv6-icmp instead";
+								$proto =~ s/^icmp$/ipv6-icmp/;
+							}
+		  				if ( $proto =~ /^ipv6-icmp$/ ) {
+		  					$outline =~ s/$CONNSTATE NEW //;
+		  					$outline .= " --icmpv6-type $dport";
 		  				} else {
 		  					$outline .= " --dport $dport";
 		  				}
@@ -801,9 +842,13 @@ sub fw_policyrouting {
 							$outline .= " -d $dnet";
 						}
 						$outline .= " -p $proto";
+						if ( $proto =~ m/^icmp$/ ) {
+							INFO "icmp is no valid protocol for ipv6, using ipv6-icmp instead";
+							$proto =~ s/^icmp$/ipv6-icmp/;
+						}
 						if ( $dport !~ /^0$/ ) {
-							if ( $proto =~ /^icmp$/ ) {
-								$outline .= " --icmp-type $dport";
+							if ( $proto =~ /^ipv6-icmp$/ ) {
+								$outline .= " --icmpv6-type $dport";
 							} else {
 								$outline .= " --dport $dport";
 							}
@@ -1004,7 +1049,7 @@ if ($fw_privclients) {
 	foreach my $iface (keys(%{$ifaces{"physical"}})) {
 		my $logicaliface = $ifaces{physical}{$iface};
 		my $interfacedir="interface-$iface";
-		-s "$configpath/$interfacedir/network" || next;
+		-s "$configpath/$interfacedir/network6" || next;
 		foreach my $line (values(@{$comment{$iface}})) {
 			print "  ".$line;
 		}
@@ -1029,7 +1074,7 @@ if ($fw_privclients) {
 				}
 				close($cf);
 			} else {
-	      print STDERR "WARNING: Interface $iface has no network file\n";
+	      print STDERR "WARNING: Interface $iface has no network6 file\n";
 			}
 	    print $FILEnat "-A PREROUTING -i $iface -j pre-$logicaliface\n";
 	    print $FILEnat "-A POSTROUTING -o $iface -j post-$logicaliface\n";

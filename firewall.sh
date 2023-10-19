@@ -48,11 +48,11 @@ FILEraw=$TMPDIR/iptables-raw
 FILEfilter=$TMPDIR/iptables-filter
 FILEnat=$TMPDIR/iptables-nat
 FILEmangle=$TMPDIR/iptables-mangle
-FILE6=$TMPDIR/iptables
-FILE6raw=$TMPDIR/iptables-raw
-FILE6filter=$TMPDIR/iptables-filter
-FILE6nat=$TMPDIR/iptables-nat
-FILE6mangle=$TMPDIR/iptables-mangle
+FILE6=$TMPDIR/iptables6
+FILE6raw=$TMPDIR/iptables6-raw
+FILE6filter=$TMPDIR/iptables6-filter
+FILE6nat=$TMPDIR/iptables6-nat
+FILE6mangle=$TMPDIR/iptables6-mangle
 
 
 if [ -e $CONFIGDIR/config.xml ]; then
@@ -217,7 +217,8 @@ done
 echo "Policy Routing"
 portal_setup
 
-firewall-lihas -f --log=$TARGETLOG
+$DOIPV4 && firewall-lihas -f --log=$TARGETLOG
+$DOIPV6 && firewall6-lihas -f --log=$TARGETLOG
 
 echo Policy Routing - no IPv6 as of now
 for policy in policy-routing-*; do
@@ -262,7 +263,7 @@ IPT6_MANGLE "-I PREROUTING -j MARK --set-mark 0"
 IPT6_MANGLE "-I OUTPUT -j MARK --set-mark 0"
 for iface in interface-*; do
   iface=${iface#interface-}
-  if [ -e interface-$iface/policy-routing ]; then
+  if $DOIPV4 && [ -e interface-$iface/policy-routing ]; then
     [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
     cat interface-$iface/policy-routing | firewall-lihas -H -P | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
     while read snet dnet proto dport policy; do
@@ -270,11 +271,21 @@ for iface in interface-*; do
       if [ $dport == "0" ]; then
           IPT_MANGLE "-A OUTPUT -s $snet -d $dnet -p $proto -j MARK --set-mark $mark" 
           IPT_MANGLE "-A PREROUTING -s $snet -d $dnet -p $proto -j MARK --set-mark $mark"
-          IPT6_MANGLE "-A OUTPUT -s $snet -d $dnet -p $proto -j MARK --set-mark $mark" 
-          IPT6_MANGLE "-A PREROUTING -s $snet -d $dnet -p $proto -j MARK --set-mark $mark"
       else
           IPT_MANGLE "-A OUTPUT -s $snet -d $dnet -p $proto --dport $dport -j MARK --set-mark $mark"
           IPT_MANGLE "-A PREROUTING -s $snet -d $dnet -p $proto --dport $dport -j MARK --set-mark $mark"
+      fi
+    done
+  fi
+  if $DOIPV6 && [ -e interface-$iface/policy6-routing ]; then
+    [ -e interface-$iface/comment ] && cat interface-$iface/comment | sed 's/^/ /'
+    cat interface-$iface/policy6-routing | firewall6-lihas -H -P | helper_dns | sed '/^[ \t]*$/d; /^#/d' |
+    while read snet dnet proto dport policy; do
+      mark=$(cat policy6-routing-$policy/key)
+      if [ $dport == "0" ]; then
+          IPT6_MANGLE "-A OUTPUT -s $snet -d $dnet -p $proto -j MARK --set-mark $mark" 
+          IPT6_MANGLE "-A PREROUTING -s $snet -d $dnet -p $proto -j MARK --set-mark $mark"
+      else
           IPT6_MANGLE "-A OUTPUT -s $snet -d $dnet -p $proto --dport $dport -j MARK --set-mark $mark"
           IPT6_MANGLE "-A PREROUTING -s $snet -d $dnet -p $proto --dport $dport -j MARK --set-mark $mark"
       fi
@@ -285,7 +296,8 @@ done
 echo LOCALHOST
 # There might be legacy FILE* in there, sync
 sync
-. ./localhost
+$DOIPV4 && . ./localhost
+$DOIPV6 && . ./localhost6
 sync
 
 for chain in INPUT OUTPUT FORWARD; do
@@ -351,7 +363,7 @@ do_stop () {
 }
 
 FILE=$TMPDIR/iptables
-FILE6=$TMPDIR/ip6tables
+FILE6=$TMPDIR/iptables6
 
 case "$1" in
   test)
@@ -416,6 +428,7 @@ case "$1" in
 	fi
 	if $DOIPV6 && ip6tables-restore --test $FILE6; then
         	ip6tables-restore < $FILE6
+	fi
 	$DOIPV4 && [ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
 	$DOIPV6 && [ -x /etc/firewall.lihas.d/fw6_post_rules ] && /etc/firewall.lihas.d/fw6_post_rules
 	$DOIPV4 && kill -INT $(cat /var/run/firewall-lihasd.pid )
@@ -438,8 +451,8 @@ case "$1" in
 	if $DOIPV4 && iptables-restore --test $FILE; then
         	iptables-restore < $FILE
 	fi
-	if $DOIPV6 && ip6tables-restore --test $FILE; then
-        	iptables-restore < $FILE
+	if $DOIPV6 && ip6tables-restore --test $FILE6; then
+        	ip6tables-restore < $FILE6
 	fi
 	$DOIPV4 && ( [ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules )
 	$DOIPV6 && ( [ -x /etc/firewall.lihas.d/fw6_post_rules ] && /etc/firewall.lihas.d/fw6_post_rules )

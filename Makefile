@@ -50,6 +50,7 @@ install:
 	install -m 0600 config.xml $(CFGDDIR)
 	install -m 0600 log4perl.conf $(CFGDDIR)
 	install -m 0755 bin/firewall-lihas.pl $(USBINDIR)/firewall-lihas
+	install -m 0755 bin/firewall6-lihas.pl $(USBINDIR)/firewall6-lihas
 	install -m 0755 bin/firewall-lihasd.pl $(USBINDIR)/
 	chmod 0755 $(USBINDIR)/firewall-lihasd.pl
 	install -m 0755 bin/firewall-lihas-watchdog-cron.sh $(UBINDIR)/
@@ -61,6 +62,7 @@ install:
 	install -m 0644 README $(USDOCDIR)
 	install -m 0644 doc/* $(USDOCDIR)
 	install -m 0755 localhost $(CFGDDIR)/
+	install -m 0755 localhost6 $(CFGDDIR)/
 	install -m 0755 firewall.sh $(UBINDIR)/; cd $(CFGDDIR) && ln -s /usr/bin/firewall.sh firewall.sh
 	install -m 0644 iptables-accept $(CFGDDIR)
 	cp -a policy-routing-dsl $(USDOCDIR)/examples/
