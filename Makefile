@@ -59,7 +59,7 @@ install:
 	install -m 0644 lib/templates/* $(ULIBDIR)/templates/
 	cp -a lib/LiHAS $(DESTDIR)/usr/share/perl5/LiHAS
 	chmod 0755 $(ULIBDIR)/*.sh
-	install -m 0644 README $(USDOCDIR)
+	install -m 0644 README.md $(USDOCDIR)
 	install -m 0644 doc/* $(USDOCDIR)
 	install -m 0755 localhost $(CFGDDIR)/
 	install -m 0755 localhost6 $(CFGDDIR)/

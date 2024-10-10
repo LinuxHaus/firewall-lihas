@@ -194,12 +194,13 @@ sub firewall_reload_dns {
   $sth->bind_columns(\$hostname, \$ip);
   while ($sth->fetch()) {
     push(@{$replacedns{$hostname}{ips}}, "$ip");
-		$replacedns{$hostname}{count}+=1;
+	$replacedns{$hostname}{count}+=1;
   }
   if ( -e $heap->{datapath}."/ipt_update" ) {
     unlink $heap->{datapath}."/ipt_update" or $logger->warn("Could not unlink ".$heap->{datapath}."/ipt_update: $!");
   }
   if ( ! open($iptupdate, ">", $heap->{datapath}."/ipt_update")) { $logger->fatal("cannot open < ".$heap->{datapath}."/ipt_update: $!"); exit 1;};
+
   if ( ! opendir($dh, $heap->{datapath}) ) { $logger->fatal("can't opendir ".$heap->{datapath}.": $!\n"); exit 1; };
   my @files = grep { /^dns-/ && -f $heap->{datapath}."/$_" } readdir($dh);
   closedir $dh;
@@ -210,6 +211,7 @@ sub firewall_reload_dns {
 		if (! open($iptflush, "iptables-save -t $table |")) { $logger->fatal("cannot open iptables-save -t $table |: $!"); exit 1};
 		foreach $flushline (<$iptflush>) {
 			if ($flushline =~ m/^(:dns-[^ \t]*) /) {
+				INFO "iptables -t $table -F $1\n";
 				print $iptupdate "iptables -t $table -F $1\n";
 			}
 		}
@@ -223,6 +225,7 @@ sub firewall_reload_dns {
 	}
   close ($iptupdate);
   chmod 0555, $heap->{datapath}."/ipt_update";
+  INFO "Reload iptabled dns $heap->{datapath}/ipt_update";
   system($heap->{datapath}."/ipt_update");
 }
 

@@ -384,8 +384,6 @@ case "$1" in
 	    ipset_exit
 	    ipset_init
 	fi
-	$DOIPV4 && firewall-lihasd.pl
-	$DOIPV6 && firewall6-lihasd.pl
 	if $DOIPV4 && iptables-restore --test $FILE; then
         	iptables-restore < $FILE
 	fi
@@ -400,6 +398,9 @@ case "$1" in
 	  echo "Potential showstoppers:"
 	  cat $LOGSTARTUP
         fi
+	sleep 5
+	$DOIPV4 && firewall-lihasd.pl
+	$DOIPV6 && firewall6-lihasd.pl
         ;;
   stop)
         [ "$VERBOSE" != no ] && log_daemon_msg "Stopping $DESC" "$NAME"
@@ -433,7 +434,7 @@ case "$1" in
 	$DOIPV6 && [ -x /etc/firewall.lihas.d/fw6_post_rules ] && /etc/firewall.lihas.d/fw6_post_rules
 	$DOIPV4 && kill -INT $(cat /var/run/firewall-lihasd.pid )
 	$DOIPV6 && kill -INT $(cat /var/run/firewall6-lihasd.pid )
-	sleep 1
+	sleep 5
 	$DOIPV4 && firewall-lihasd.pl
 	$DOIPV6 && firewall6-lihasd.pl
         ;;
@@ -458,7 +459,7 @@ case "$1" in
 	$DOIPV6 && ( [ -x /etc/firewall.lihas.d/fw6_post_rules ] && /etc/firewall.lihas.d/fw6_post_rules )
 	$DOIPV4 && kill -INT $(cat /var/run/firewall-lihasd.pid )
 	$DOIPV6 && kill -INT $(cat /var/run/firewall6-lihasd.pid )
-	sleep 1
+	sleep 5
 	$DOIPV4 && firewall-lihasd.pl
 	$DOIPV6 && firewall6-lihasd.pl
         ;;
