@@ -340,19 +340,19 @@ cat >$FILE6 <<'EOF'
 :OUTPUT ACCEPT
 EOF
 cat $FILE6raw | sed '/-[sd] dns-/d' >> $FILE6
-cat $FILE6raw | sed -n '/-[sd] dns-/p' > $DATAPATH/dns-raw
+cat $FILE6raw | sed -n '/-[sd] dns-/p' > $DATAPATH/dns6-raw
 echo COMMIT >> $FILE6
 echo *filter >> $FILE6
 cat $FILE6filter | sed '/-[sd] dns-/d' >> $FILE6
-cat $FILE6filter | sed -n '/-[sd] dns-/p' > $DATAPATH/dns-filter
+cat $FILE6filter | sed -n '/-[sd] dns-/p' > $DATAPATH/dns6-filter
 echo COMMIT >> $FILE6
 echo *mangle >> $FILE6
 cat $FILE6mangle | sed '/-[sd] dns-/d' >> $FILE6
-cat $FILE6mangle | sed -n '/-[sd] dns-/p' > $DATAPATH/dns-mangle
+cat $FILE6mangle | sed -n '/-[sd] dns-/p' > $DATAPATH/dns6-mangle
 echo COMMIT >> $FILE6
 echo *nat >> $FILE6
 cat $FILE6nat | sed '/-[sd] dns-/d; /--to-destination dns/d' >> $FILE6
-cat $FILE6nat | sed -n '/-[sd] dns-/p; /--to-destination dns/p' > $DATAPATH/dns-nat
+cat $FILE6nat | sed -n '/-[sd] dns-/p; /--to-destination dns/p' > $DATAPATH/dns6-nat
 echo COMMIT >> $FILE6
 
 }

@@ -1,4 +1,5 @@
-# $Id$
+# firewall-lihas
+IPv4 und IPv6 Firewall.
 
 Das Konfigurationsverzeichnis ist /etc/firewall-lihas.d
 darin finden die relevanten Dinge statt.
