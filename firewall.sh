@@ -322,15 +322,15 @@ EOF
 cat $FILEraw | sed '/-[sd] dns-/d' >> $FILE
 cat $FILEraw | sed -n '/-[sd] dns-/p' > $DATAPATH/dns-raw
 echo COMMIT >> $FILE
-echo *filter >> $FILE
+echo "*filter" >> $FILE
 cat $FILEfilter | sed '/-[sd] dns-/d' >> $FILE
 cat $FILEfilter | sed -n '/-[sd] dns-/p' > $DATAPATH/dns-filter
 echo COMMIT >> $FILE
-echo *mangle >> $FILE
+echo "*mangle" >> $FILE
 cat $FILEmangle | sed '/-[sd] dns-/d' >> $FILE
 cat $FILEmangle | sed -n '/-[sd] dns-/p' > $DATAPATH/dns-mangle
 echo COMMIT >> $FILE
-echo *nat >> $FILE
+echo "*nat" >> $FILE
 cat $FILEnat | sed '/-[sd] dns-/d; /--to-destination dns/d' >> $FILE
 cat $FILEnat | sed -n '/-[sd] dns-/p; /--to-destination dns/p' > $DATAPATH/dns-nat
 echo COMMIT >> $FILE
@@ -342,15 +342,15 @@ EOF
 cat $FILE6raw | sed '/-[sd] dns-/d' >> $FILE6
 cat $FILE6raw | sed -n '/-[sd] dns-/p' > $DATAPATH/dns6-raw
 echo COMMIT >> $FILE6
-echo *filter >> $FILE6
+echo "*filter" >> $FILE6
 cat $FILE6filter | sed '/-[sd] dns-/d' >> $FILE6
 cat $FILE6filter | sed -n '/-[sd] dns-/p' > $DATAPATH/dns6-filter
 echo COMMIT >> $FILE6
-echo *mangle >> $FILE6
+echo "*mangle" >> $FILE6
 cat $FILE6mangle | sed '/-[sd] dns-/d' >> $FILE6
 cat $FILE6mangle | sed -n '/-[sd] dns-/p' > $DATAPATH/dns6-mangle
 echo COMMIT >> $FILE6
-echo *nat >> $FILE6
+echo "*nat" >> $FILE6
 cat $FILE6nat | sed '/-[sd] dns-/d; /--to-destination dns/d' >> $FILE6
 cat $FILE6nat | sed -n '/-[sd] dns-/p; /--to-destination dns/p' > $DATAPATH/dns6-nat
 echo COMMIT >> $FILE6
