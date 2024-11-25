@@ -285,10 +285,11 @@ sub expand_portgroup {
 	my $replaceline='';
 	my $resultline='';
 	my $name = $line;
-	if ( $line =~ m/^(.*)[ \t]+(any|tcp|udp|icmp)[ \t]+portgroup-([a-zA-Z0-9_\.-]+)\b/ ) {
+	if ( $line =~ m/^(.*)[ \t]+(any|tcp|udp|icmp)[ \t]+portgroup-([a-zA-Z0-9_\.-]+)\b(.*)$/ ) {
 		my $base = $1;
 		my $proto = $2;
 		my $name = $3;
+		my $tail = $4;
 		$commentchain .= " " . firewall_comment_add_key($dbh,"groups/".$name);
 		if (!defined ${$portgroup{$name}}{defined}) {
 			WARN "Portgroup $name undefined, '$line' dropped\n";
@@ -297,12 +298,12 @@ sub expand_portgroup {
 			if ($proto =~ /^any$/) {
 				foreach $proto (keys %{$portgroup{$name}{proto}}) {
 					foreach my $port (values @{$portgroup{$name}{proto}{$proto}{ports}}) {
-						$resultline .= "$base\t$proto\t$port\n";
+						$resultline .= "$base\t$proto\t$port\t$tail\n";
 					}
 				}
 			} else {
 				foreach my $port (values @{$portgroup{$name}{proto}{$proto}{ports}}) {
-					$resultline .= "$base\t$proto\t$port\n";
+					$resultline .= "$base\t$proto\t$port\t$tail\n";
 				}
 			}
 		}
