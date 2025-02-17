@@ -101,8 +101,7 @@ sub dns_response {
       if ( ! defined($dnsips{$ip}{time_first}) ) {
 	# new entry
 	$sthinsertcurrent->execute($response->{host}, time(), time()+$dnsips{$ip}{ttl}, $ip);
-        $sthupdatevarsnum= $heap->{dbh}->prepare("$sql");
-        $sth1->execute(1,'fw_reload_dns');
+        $sthupdatevarsnum->execute(1,'fw_reload_dns');
         $kernel->delay('firewall_reload_dns',10);
       } else {
         $sthupdatecurrent ->execute(time()+$dnsips{$ip}{ttl}, $response->{host}, $ip);
