@@ -161,7 +161,7 @@ sub parse_hostgroup {
 				foreach my $host (values(@{$hostgroup{$1}{hosts}})) {
 					push(@{$hostgroup{$name}{hosts}}, $host);
 				}
-			} elsif ( $line =~ m/^((([0-9:]+)(|\/[0-9]+))|dns-[a-zA-Z0-9-\.]+)(\s.*|)$/){
+			} elsif ( $line =~ m/^((([0-9:]+)(|\/[0-9]+))|ipset-[a-zA-Z0-9-_\.]+|dns-[a-zA-Z0-9-\.]+)(\s.*|)$/){
 				my $host = $1;
 				push(@{$hostgroup{$name}{hosts}}, $host);
 			}
