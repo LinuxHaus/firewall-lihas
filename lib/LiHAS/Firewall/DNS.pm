@@ -78,32 +78,34 @@ sub dns_response {
     );
     $dnsips{$answer->rdatastr()}{ttl}=$answer->ttl;
   }
+  $sql = "INSERT INTO dnshistory (hostname, time_first, time_valid_till, ip, active) VALUES (?, ?, ?, ?, ?)";
+  my $sthinserthistory = $heap->{dbh}->prepare($sql);
+  $sql = "DELETE FROM dnshistory WHERE hostname=? AND time_first=? AND time_valid_till<? AND ip=? AND active=?";
+  my $sthdeletehistory = $heap->{dbh}->prepare($sql);
+  $sql = "DELETE FROM hostnames_current where hostname=? AND ip=?";
+  my $sthdeletecurrent= $heap->{dbh}->prepare($sql);
+  $sql = "UPDATE vars_num SET value=? WHERE name=?";
+  my $sthupdatevarsnum = $heap->{dbh}->prepare("$sql");
+  $sql = "INSERT INTO hostnames_current (hostname, time_first, time_valid_till, ip) VALUES (?, ?, ?, ?)";
+  my $sthinsertcurrent= $heap->{dbh}->prepare($sql);
+  $sql = "UPDATE hostnames_current SET time_valid_till=? WHERE hostname=? AND ip=?";
+  my $sthupdatecurrent = $heap->{dbh}->prepare($sql);
   foreach my $ip (keys %dnsips) {
     if ($dnsips{$ip}{ttl} == 0) {
-      $sql = "INSERT INTO dnshistory (hostname, time_first, time_valid_till, ip, active) VALUES (?, ?, ?, ?, ?)";
-      $sth1 = $heap->{dbh}->prepare($sql);
-      $sth1->execute($response->{host}, $dnsips{$ip}{time_first}, $dnsips{$ip}{time_valid_till}, $ip, 0);
-      $sql = "DELETE FROM hostnames_current where hostname=? AND ip=?";
-      $sth1 = $heap->{dbh}->prepare($sql);
-      $sth1->execute($response->{host}, $ip);
-      $sql = "UPDATE vars_num SET value=? WHERE name=?";
-      $sth1 = $heap->{dbh}->prepare("$sql");
-      $sth1->execute(1,'fw_reload_dns');
+      $sthinserthistory->execute($response->{host}, $dnsips{$ip}{time_first}, $dnsips{$ip}{time_valid_till}, $ip, 0);
+      $sthdeletehistory->execute($response->{host}, $dnsips{$ip}{time_first}, $dnsips{$ip}{time_valid_till}, $ip, 0);
+      $sthdeletecurrent->execute($response->{host}, $ip);
+      $sthupdatevarsnum->execute(1,'fw_reload_dns');
       $kernel->delay('firewall_reload_dns',10);
     } else {
       if ( ! defined($dnsips{$ip}{time_first}) ) {
 	# new entry
-        $sql = "INSERT INTO hostnames_current (hostname, time_first, time_valid_till, ip) VALUES (?, ?, ?, ?)";
-	$sth1 = $heap->{dbh}->prepare($sql);
-	$sth1->execute($response->{host}, time(), time()+$dnsips{$ip}{ttl}, $ip);
-        $sql = "UPDATE vars_num SET value=? WHERE name=?";
-        $sth1 = $heap->{dbh}->prepare("$sql");
+	$sthinsertcurrent->execute($response->{host}, time(), time()+$dnsips{$ip}{ttl}, $ip);
+        $sthupdatevarsnum= $heap->{dbh}->prepare("$sql");
         $sth1->execute(1,'fw_reload_dns');
         $kernel->delay('firewall_reload_dns',10);
       } else {
-        $sql = "UPDATE hostnames_current SET time_valid_till=? WHERE hostname=? AND ip=?";
-        $sth1 = $heap->{dbh}->prepare($sql);
-        $sth1->execute(time()+$dnsips{$ip}{ttl}, $response->{host}, $ip);
+        $sthupdatecurrent ->execute(time()+$dnsips{$ip}{ttl}, $response->{host}, $ip);
       }
     }
   }
