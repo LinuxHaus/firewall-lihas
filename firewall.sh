@@ -98,6 +98,7 @@ exec 4>$FILE 5>$FILEfilter 6>$FILEnat 7>$FILEmangle 8>$FILEraw 9>$FILE6 10>$FILE
 HAVE_COMMENT=0
 HAVE_LOG=0
 HAVE_ULOG=0
+HAVE_NFLOG=0
 HAVE_IPSET=0
 # check availability of modules:
 iptables -N lihas-moduletest
