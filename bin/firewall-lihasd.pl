@@ -225,7 +225,7 @@ sub firewall_reload_dns {
 	}
   close ($iptupdate);
   chmod 0555, $heap->{datapath}."/ipt_update";
-  INFO "Reload iptabled dns $heap->{datapath}/ipt_update";
+  INFO "Reload iptables dns $heap->{datapath}/ipt_update";
   system($heap->{datapath}."/ipt_update");
 }
 
