@@ -20,8 +20,8 @@
 BEGIN {
   $DEBUG=0;
   $DAEMON=1;
-	use Getopt::Long qw(GetOptions);
-	Getopt::Long::Configure qw(gnu_getopt);
+  use Getopt::Long qw(GetOptions);
+  Getopt::Long::Configure qw(gnu_getopt);
   use Data::Dumper;
   use Module::Load;
   
@@ -31,19 +31,19 @@ BEGIN {
   
   INFO "$0 starting\n";
   
-	GetOptions(
-		'debug|d' => \&DEBUG
-	) or ERROR "Unknown Option\n";
-	if ($DEBUG) { $DAEMON=0; }
+  GetOptions(
+    'debug|d' => \&DEBUG
+  ) or ERROR "Unknown Option\n";
+  if ($DEBUG) { $DAEMON=0; }
 
-	if ($DAEMON==1) {
+  if ($DAEMON==1) {
     use Net::Server::Daemonize qw(daemonize check_pid_file unlink_pid_file);    # or any other daemonization module
     daemonize(
-	  	'root',
-	  	'root',
-	  	'/var/run/firewall-lihasd.pid'
-	  );
-	}
+      'root',
+      'root',
+      '/var/run/firewall-lihasd.pid'
+    );
+  }
 }
 
 =head1 NAME
@@ -84,9 +84,9 @@ my $module = 'POE::Component::Server::HTTP';
 my $have_httpd=0;
 my $rv = check_install(module => 'POE::Component::Server::HTTP');
 if ( not defined($rv) ) {
-	$have_httpd = 0;
+  $have_httpd = 0;
 } else {
-	$have_httpd = 1;
+  $have_httpd = 1;
   Module::Load->load('POE::Component::Server::HTTP');
 }
 use HTTP::Status qw(:constants);
@@ -98,16 +98,16 @@ use DBI;
 
 my $cfg = new XML::Application::Config("LiHAS-Firewall","/etc/firewall.lihas.d/config.xml");
 if (defined $cfg->find('feature/connectivity/@enabled') && ( $cfg->find('feature/connectivity/@enabled') !~ /^(|0)$/)) {
-	eval { require LiHAS::Firewall::Connectivity }; if ($@) { WARN "No connectivity test support: $@"; $feature{'connectivity'}=0; } else { $feature{'connectivity'}=1; }
+  eval { require LiHAS::Firewall::Connectivity }; if ($@) { WARN "No connectivity test support: $@"; $feature{'connectivity'}=0; } else { $feature{'connectivity'}=1; }
 } else { $feature{'connectivity'}=0; }
 
 if ($cfg->find('feature/portal/@enabled') !~ /^(|0)$/ ) {
-	if ($have_httpd) {
-		eval { require LiHAS::Firewall::Portal }; if ($@) { WARN "No portal support: $@"; $feature{'portal'}=0; } else { $feature{'portal'}=1; }
-	} else {
-		WARN "Portal support wanted, but POE::Component::Server::HTTP not available";
-		WARN 'Either install POE::Component::Server::HTTP or disable portal support with feature/portal/@enabled=0 in config.xml';
-	}
+  if ($have_httpd) {
+    eval { require LiHAS::Firewall::Portal }; if ($@) { WARN "No portal support: $@"; $feature{'portal'}=0; } else { $feature{'portal'}=1; }
+  } else {
+    WARN "Portal support wanted, but POE::Component::Server::HTTP not available";
+    WARN 'Either install POE::Component::Server::HTTP or disable portal support with feature/portal/@enabled=0 in config.xml';
+  }
 } else { $feature{'portal'}=0; }
 
 =head1 Functions
@@ -119,28 +119,28 @@ if ($cfg->find('feature/portal/@enabled') !~ /^(|0)$/ ) {
 #=cut
 #sub firewall_reload_ipsec {
 #  my ($kernel, $session, $heap) = @_[KERNEL, SESSION, HEAP];
-#	my $ipsecsecretssource;
-#	if ( -r $heap->{configpath}."/feature/ipsec/ipsec.secrets.dns"; ) {
-#		if ( ! open($ipsecsecretssource, $heap->{configpath}."/feature/ipsec/ipsec.secrets.dns")) {
-#			$logger->fatal("cannot open < ".$heap->{configpath}."/feature/ipsec/ipsec.secrets.dns: $!");
-#		} else {
-#			if ( ! open() ) {
-#			} else {
-#				if ( ! open($ipsecsecretsdest, $cfg->find('/applicationconfig/application/feature/ipsec/secretsfile')) {
-#					$logger->fatal("cannot open > ".$cfg->find('/applicationconfig/application/feature/ipsec/secretsfile').": $!");
-#				} else {
-#					foreach my $line (<$ipsecsecretssource>) {
-#						chop $line;
-#						$line =~ m/^#/ && next;
-#						$line =~ m/^[ \t]*$/ && next;
-#						if ( $line =~ m/^([\S]*)[\s]+([\S]*)[\s]+:[\s]+PSK[\s]+([\S]*)(.*)$/ ) {
-#						}
-#					}
-#				}
-#			}
-#			close($ipsecsecretssource);
-#		}
-#	}
+#  my $ipsecsecretssource;
+#  if ( -r $heap->{configpath}."/feature/ipsec/ipsec.secrets.dns"; ) {
+#    if ( ! open($ipsecsecretssource, $heap->{configpath}."/feature/ipsec/ipsec.secrets.dns")) {
+#      $logger->fatal("cannot open < ".$heap->{configpath}."/feature/ipsec/ipsec.secrets.dns: $!");
+#    } else {
+#      if ( ! open() ) {
+#      } else {
+#        if ( ! open($ipsecsecretsdest, $cfg->find('/applicationconfig/application/feature/ipsec/secretsfile')) {
+#          $logger->fatal("cannot open > ".$cfg->find('/applicationconfig/application/feature/ipsec/secretsfile').": $!");
+#        } else {
+#          foreach my $line (<$ipsecsecretssource>) {
+#            chop $line;
+#            $line =~ m/^#/ && next;
+#            $line =~ m/^[ \t]*$/ && next;
+#            if ( $line =~ m/^([\S]*)[\s]+([\S]*)[\s]+:[\s]+PSK[\s]+([\S]*)(.*)$/ ) {
+#            }
+#          }
+#        }
+#      }
+#      close($ipsecsecretssource);
+#    }
+#  }
 #}
 
 =head2 expand_dns
@@ -148,29 +148,29 @@ if ($cfg->find('feature/portal/@enabled') !~ /^(|0)$/ ) {
 Expands dns-* to the corresponding IPs from DB
 =cut
 sub expand_dns {
-	my ($arg_ref) = @_;
-	my $line = $arg_ref->{line};
-	my $depth = $arg_ref->{depth};
-	my $iptupdate = $arg_ref->{iptupdate};
+  my ($arg_ref) = @_;
+  my $line = $arg_ref->{line};
+  my $depth = $arg_ref->{depth};
+  my $iptupdate = $arg_ref->{iptupdate};
   my %replacedns = %{$arg_ref->{replacedns}};
-	my %replacehostcount = %{$arg_ref->{replacehostcount}};
-	my $outline='';
+  my %replacehostcount = %{$arg_ref->{replacehostcount}};
+  my $outline='';
 
-	$line =~ s/-A (in|out|fwd|post|pre)/-A tmp-dns-$1/;
-	if ( $line =~ m/([sd][ \t]+)dns-([a-zA-Z0-9_\.-]+)\b/ ) {
-		my $name = $2;
-		if ( not defined $replacedns{$name}{count} ) {
-			WARN "expand_dns: dns-$name unresolved";
-		}
+  $line =~ s/-A (in|out|fwd|post|pre)/-A tmp-dns-$1/;
+  if ( $line =~ m/([sd][ \t]+)dns-([a-zA-Z0-9_\.-]+)\b/ ) {
+    my $name = $2;
+    if ( not defined $replacedns{$name}{count} ) {
+      WARN "expand_dns: dns-$name unresolved";
+    }
     foreach my $ip (values(@{$replacedns{$name}{ips}})) {
-			my $thisline = $line;
-			$thisline =~ s/([sd][ \t]+)dns-$name/$1$ip/;
-			$outline .= expand_dns({iptupdate=>$iptupdate, line=>$thisline, replacehostcount=>\%replacehostcount, replacedns=>\%replacedns, depth=>$depth+1})
-		}
-		return $outline;
-	} else {
-		return $line;
-	}
+      my $thisline = $line;
+      $thisline =~ s/([sd][ \t]+)dns-$name/$1$ip/;
+      $outline .= expand_dns({iptupdate=>$iptupdate, line=>$thisline, replacehostcount=>\%replacehostcount, replacedns=>\%replacedns, depth=>$depth+1})
+    }
+    return $outline;
+  } else {
+    return $line;
+  }
 }
 =head2 firewall_reload_dns
 
@@ -179,7 +179,7 @@ Reloads the iptables dns-* chains with current IPs from database
 sub firewall_reload_dns {
   my ($kernel, $session, $heap) = @_[KERNEL, SESSION, HEAP];
   my %replacedns;
-	my %replacehostcount;
+  my %replacehostcount;
   my ($hostname, $ip, $table);
   my ($dh, $fh, $line, $iptupdate);
   my $logger = Log::Log4perl->get_logger('firewalld.reload.dns');
@@ -197,7 +197,7 @@ sub firewall_reload_dns {
   $sth->bind_columns(\$hostname, \$ip);
   while ($sth->fetch()) {
     push(@{$replacedns{$hostname}{ips}}, "$ip");
-	  $replacedns{$hostname}{count}+=1;
+    $replacedns{$hostname}{count}+=1;
   }
   if ( -e $heap->{datapath}."/ipt_update" ) {
     unlink $heap->{datapath}."/ipt_update" or $logger->warn("Could not unlink ".$heap->{datapath}."/ipt_update: $!");
@@ -205,79 +205,79 @@ sub firewall_reload_dns {
   if ( ! open($iptupdate, ">", $heap->{datapath}."/ipt_update")) { $logger->fatal("cannot open < ".$heap->{datapath}."/ipt_update: $!"); exit 1;};
 
   if ( ! opendir($dh, $heap->{datapath}) ) { $logger->fatal("can't opendir ".$heap->{datapath}.": $!\n"); exit 1; };
-	DEBUG "start %allchains";
-	my %allchains;
-	$iptcmd = "/usr/sbin/iptables-save |";
-	open(my $pipe, "$iptcmd") or die "Can't start $iptcmd: $!";
-	foreach $line (<$pipe>) {
-		if ( $line =~ m/^\*([^ \t\n\r]*)/ ) {
-			$table=$1;
-		} elsif ( $line =~ m/^:([^ \t\n\r]*)/ ) {
-			$allchains{$table}{$1} = 1;
-		}
-	}
-	close($pipe);
-	DEBUG "done %allchains";
+  DEBUG "start %allchains";
+  my %allchains;
+  $iptcmd = "/usr/sbin/iptables-save |";
+  open(my $pipe, "$iptcmd") or die "Can't start $iptcmd: $!";
+  foreach $line (<$pipe>) {
+    if ( $line =~ m/^\*([^ \t\n\r]*)/ ) {
+      $table=$1;
+    } elsif ( $line =~ m/^:([^ \t\n\r]*)/ ) {
+      $allchains{$table}{$1} = 1;
+    }
+  }
+  close($pipe);
+  DEBUG "done %allchains";
   my @files = grep { /^dns-/ && -f $heap->{datapath}."/$_" } readdir($dh);
   closedir $dh;
-	my %chains;
-	foreach my $file (@files) {
-		$table = $file;
-		$table =~ s/dns-//;
-		print $iptupdate "*$table\n";
-		foreach my $chain (keys(%{$allchains{$table}})) {
-			print $iptupdate ":tmp-dns-$chain -\n";
-		}
-		if ( ! open($fh, "<", $heap->{datapath}."/$file")) { $logger->fatal("cannot open < ".$heap->{datapath}."/$file: $!"); exit 1};
-		foreach $line (<$fh>) {
-			print $iptupdate expand_dns({iptupdate=>$iptupdate, line=>$line, replacehostcount=>\%replacehostcount, replacedns=>\%replacedns, depth=>0})
-		}
-		close($fh);
-		print $iptupdate "COMMIT\n";
-	}
+  my %chains;
+  foreach my $file (@files) {
+    $table = $file;
+    $table =~ s/dns-//;
+    print $iptupdate "*$table\n";
+    foreach my $chain (keys(%{$allchains{$table}})) {
+      print $iptupdate ":tmp-dns-$chain -\n";
+    }
+    if ( ! open($fh, "<", $heap->{datapath}."/$file")) { $logger->fatal("cannot open < ".$heap->{datapath}."/$file: $!"); exit 1};
+    foreach $line (<$fh>) {
+      print $iptupdate expand_dns({iptupdate=>$iptupdate, line=>$line, replacehostcount=>\%replacehostcount, replacedns=>\%replacedns, depth=>0})
+    }
+    close($fh);
+    print $iptupdate "COMMIT\n";
+  }
   close ($iptupdate);
   INFO "Reload iptables dns $heap->{datapath}/ipt_update";
-	foreach my $table ( keys(%allchains) ) {
-		foreach my $chain ( keys(%{$allchains{$table}}) ) {
-			if ( $chain =~ m/^dns-/ ) {
-				$iptcmd = "/usr/sbin/iptables -t $table -F old-$chain";
-				system("$iptcmd") or die "Can't start $iptcmd: $!";
-				$iptcmd = "/usr/sbin/iptables -t $table -X old-$chain";
-				system("$iptcmd") or die "Can't start $iptcmd: $!";
-			}
-		}
-	}
+  foreach my $table ( keys(%allchains) ) {
+    foreach my $chain ( keys(%{$allchains{$table}}) ) {
+      if ( $chain =~ m/^dns-/ ) {
+        $iptcmd = "/usr/sbin/iptables -t $table -F old-$chain";
+        system("$iptcmd") or die "Can't start $iptcmd: $!";
+        $iptcmd = "/usr/sbin/iptables -t $table -X old-$chain";
+        system("$iptcmd") or die "Can't start $iptcmd: $!";
+      }
+    }
+  }
   $iptcmd="/usr/sbin/iptables-restore -n ".$heap->{datapath}."/ipt_update";
-	DEBUG "DEBUG: Run $iptcmd";
-	system("$iptcmd") or die "Can't start $iptcmd: $!";
-	# TODO: rename/delete old tables
-	foreach my $table ( keys(%chains) ) {
-		foreach my $chain ( keys(%{$allchains{$table}}) ) {
-			if ( $chain=~ m/^dns-/ ) {
-				$iptcmd="/usr/sbin/iptables -E $chain old-$chain";
-				system("$iptcmd") or die "Can't start $iptcmd: $!";
-				$iptcmd="/usr/sbin/iptables -E tmp-$chain $chain";
-				system("$iptcmd") or die "Can't start $iptcmd: $!";
-			}
-		}
-	}
-	foreach my $table (keys(%allchains) ) {
-		foreach my $chain (keys(%{$allchains{$table}})) {
-			$iptcmd = "/usr/sbin/iptables -t $table -S $chain |";
-			open(my $pipe, "$iptcmd") or die "Can't start $iptcmd: $!";
-			my $n = 0;
-			foreach my $line (<$pipe>) {
-				$n += 1;
-				if ( $line =~ m/-j old-dns-([^ \t\n\r]*)/ ) {
-					$line =~ s/-j old-dns-/-j dns-/;
-					$iptcmd="/usr/sbin/iptables -t $table -R $line";
-					DEBUG "DEBUG: Run $iptcmd";
-					system("$iptcmd") or die "Can't start $iptcmd: $!";
-				}
-			}
-			close($pipe);
-		}
-	}
+  DEBUG "DEBUG: Run $iptcmd";
+  system("$iptcmd") or die "Can't start $iptcmd: $!";
+  # TODO: rename/delete old tables
+  foreach my $table ( keys(%chains) ) {
+    foreach my $chain ( keys(%{$allchains{$table}}) ) {
+      if ( $chain=~ m/^dns-/ ) {
+        $iptcmd="/usr/sbin/iptables -E $chain old-$chain";
+        system("$iptcmd") or die "Can't start $iptcmd: $!";
+        $iptcmd="/usr/sbin/iptables -E tmp-$chain $chain";
+        system("$iptcmd") or die "Can't start $iptcmd: $!";
+      }
+    }
+  }
+  foreach my $table (keys(%allchains) ) {
+    foreach my $chain (keys(%{$allchains{$table}})) {
+      $iptcmd = "/usr/sbin/iptables -t $table -S $chain |";
+      open(my $pipe, "$iptcmd") or die "Can't start $iptcmd: $!";
+      my $n = 0;
+      foreach my $line (<$pipe>) {
+        $n += 1;
+        if ( $line =~ m/-j old-dns-([^ \t\n\r]*)/ ) {
+          $line =~ s/-j old-dns-/-j dns-/;
+          $iptcmd="/usr/sbin/iptables -t $table -R $line";
+          DEBUG "DEBUG: Run $iptcmd";
+          system("$iptcmd") or die "Can't start $iptcmd: $!";
+        }
+      }
+      close($pipe);
+    }
+  }
 }
 
 =head2 firewall_find_dnsnames
@@ -296,9 +296,9 @@ sub firewall_find_dnsnames {
   opendir(my $dh, $cfg->find('config/@path')."/groups") || die "can't opendir ".$cfg->find('config/@path')."/groups: $!\n";
   my @files = grep { /^hostgroup-/ && -f $cfg->find('config/@path')."/groups/$_" } readdir($dh);
   closedir $dh;
-	if ( -r $heap->{datapath}."/hostgroup-feature-ipsec" ) {
-		push(@files, $heap->{datapath}."/hostgroup-feature-ipsec");
-	}
+  if ( -r $heap->{datapath}."/hostgroup-feature-ipsec" ) {
+    push(@files, $heap->{datapath}."/hostgroup-feature-ipsec");
+  }
   foreach my $file (@files) {
     open($fh, "<", $cfg->find('config/@path')."/groups/$file") or die "cannot open < ".$cfg->find('config/@path')."/groups/$file: $!";
     foreach $line (<$fh>) {
@@ -409,9 +409,9 @@ sub session_start {
   $kernel->yield('timer_ping');
   $kernel->yield('firewall_find_dnsnames');
   if ($feature{'portal'}!=0) {
-		$kernel->yield('portal_init');
-		$kernel->yield('portal_ipset_init');
-	}
+    $kernel->yield('portal_init');
+    $kernel->yield('portal_ipset_init');
+  }
   $kernel->yield('dns_update');
   $kernel->yield('firewall_reload_dns');
   manage_server();
@@ -455,10 +455,10 @@ our $mainsession = POE::Session->create(
       my $cmd="";
 #      foreach my $cmd ( $request->findvalue('//cmd[@name]') ) {
 #        if ( $cmd =~ /^reload$/ ) {
-#	  $_[KERNEL]->yield('portal_ipset_init');
-	  $client_output="<application name=\"LiHAS-Firewall\"><response>$cmd started</response></application>";
-#	} else {
-#	  $client_output="<application name=\"LiHAS-Firewall\"><response>Unknown command $cmd</response></application>";
+#    $_[KERNEL]->yield('portal_ipset_init');
+    $client_output="<application name=\"LiHAS-Firewall\"><response>$cmd started</response></application>";
+#  } else {
+#    $client_output="<application name=\"LiHAS-Firewall\"><response>Unknown command $cmd</response></application>";
 #        };
 #      }
       $_[KERNEL]->yield('portal_ipset_init');
