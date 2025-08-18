@@ -92,4 +92,4 @@ debian-dpkg:
 	dpkg-buildpackage -sa -rfakeroot -tc
 
 debian-upload:
-	curl -u `cat $(HOME)/.debianrepositoryauth` -v $(UPLOADURL) -F B1="Datei hochladen" -F uploaded_file=@../$(APPNAME)_$(VERSION)_$(ARCH).deb -F dists="buster,bullseye,bookworm,trixie"
+	curl -u `cat $(HOME)/.debianrepositoryauth` -v $(UPLOADURL) -F B1="Datei hochladen" -F uploaded_file=@../$(APPNAME)_$(VERSION)_$(ARCH).deb -F dists="bullseye,bookworm,trixie,forky"

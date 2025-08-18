@@ -205,7 +205,6 @@ sub firewall_reload_dns {
   if ( ! open($iptupdate, ">", $heap->{datapath}."/ipt_update")) { $logger->fatal("cannot open < ".$heap->{datapath}."/ipt_update: $!"); exit 1;};
 
   if ( ! opendir($dh, $heap->{datapath}) ) { $logger->fatal("can't opendir ".$heap->{datapath}.": $!\n"); exit 1; };
-  DEBUG "start %allchains";
   my %allchains;
   $iptcmd = "/usr/sbin/iptables-save |";
   open(my $pipe, "$iptcmd") or die "Can't start $iptcmd: $!";
@@ -217,7 +216,6 @@ sub firewall_reload_dns {
     }
   }
   close($pipe);
-  DEBUG "done %allchains";
   my @files = grep { /^dns-/ && -f $heap->{datapath}."/$_" } readdir($dh);
   closedir $dh;
   my %chains;
@@ -248,7 +246,6 @@ sub firewall_reload_dns {
     }
   }
   $iptcmd="/usr/sbin/iptables-restore -n ".$heap->{datapath}."/ipt_update";
-  DEBUG "DEBUG: Run $iptcmd";
   system("$iptcmd") or die "Can't start $iptcmd: $!";
   # TODO: rename/delete old tables
   foreach my $table ( keys(%chains) ) {
@@ -271,7 +268,6 @@ sub firewall_reload_dns {
         if ( $line =~ m/-j old-dns-([^ \t\n\r]*)/ ) {
           $line =~ s/-j old-dns-/-j dns-/;
           $iptcmd="/usr/sbin/iptables -t $table -R $line";
-          DEBUG "DEBUG: Run $iptcmd";
           system("$iptcmd") or die "Can't start $iptcmd: $!";
         }
       }
