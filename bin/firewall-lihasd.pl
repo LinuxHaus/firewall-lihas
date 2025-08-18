@@ -156,6 +156,7 @@ sub expand_dns {
 	my %replacehostcount = %{$arg_ref->{replacehostcount}};
 	my $outline='';
 
+	$line =~ s/-A (in|out|fwd|post|pre)/-A tmp-dns-$1/;
 	if ( $line =~ m/([sd][ \t]+)dns-([a-zA-Z0-9_\.-]+)\b/ ) {
 		my $name = $2;
 		if ( not defined $replacedns{$name}{count} ) {
@@ -180,9 +181,11 @@ sub firewall_reload_dns {
   my %replacedns;
 	my %replacehostcount;
   my ($hostname, $ip, $table);
-  my ($dh, $fh, $line, $iptupdate, $iptflush, $flushline);
+  my ($dh, $fh, $line, $iptupdate);
   my $logger = Log::Log4perl->get_logger('firewalld.reload.dns');
   if (! Log::Log4perl::initialized()) { $logger->warn("uninit"); }
+
+  my $iptcmd="";
 
   my $sql = "UPDATE vars_num SET value=? WHERE name=?";
   my $sth = $heap->{dbh}->prepare("$sql");
@@ -194,7 +197,7 @@ sub firewall_reload_dns {
   $sth->bind_columns(\$hostname, \$ip);
   while ($sth->fetch()) {
     push(@{$replacedns{$hostname}{ips}}, "$ip");
-	$replacedns{$hostname}{count}+=1;
+	  $replacedns{$hostname}{count}+=1;
   }
   if ( -e $heap->{datapath}."/ipt_update" ) {
     unlink $heap->{datapath}."/ipt_update" or $logger->warn("Could not unlink ".$heap->{datapath}."/ipt_update: $!");
@@ -202,31 +205,79 @@ sub firewall_reload_dns {
   if ( ! open($iptupdate, ">", $heap->{datapath}."/ipt_update")) { $logger->fatal("cannot open < ".$heap->{datapath}."/ipt_update: $!"); exit 1;};
 
   if ( ! opendir($dh, $heap->{datapath}) ) { $logger->fatal("can't opendir ".$heap->{datapath}.": $!\n"); exit 1; };
+	DEBUG "start %allchains";
+	my %allchains;
+	$iptcmd = "/usr/sbin/iptables-save |";
+	open(my $pipe, "$iptcmd") or die "Can't start $iptcmd: $!";
+	foreach $line (<$pipe>) {
+		if ( $line =~ m/^\*([^ \t\n\r]*)/ ) {
+			$table=$1;
+		} elsif ( $line =~ m/^:([^ \t\n\r]*)/ ) {
+			$allchains{$table}{$1} = 1;
+		}
+	}
+	close($pipe);
+	DEBUG "done %allchains";
   my @files = grep { /^dns-/ && -f $heap->{datapath}."/$_" } readdir($dh);
   closedir $dh;
+	my %chains;
 	foreach my $file (@files) {
 		$table = $file;
-		$table =~ s/^dns-//;
-		# create flush-statements for old tables
-		if (! open($iptflush, "iptables-save -t $table |")) { $logger->fatal("cannot open iptables-save -t $table |: $!"); exit 1};
-		foreach $flushline (<$iptflush>) {
-			if ($flushline =~ m/^(:dns-[^ \t]*) /) {
-				INFO "iptables -t $table -F $1\n";
-				print $iptupdate "iptables -t $table -F $1\n";
-			}
+		$table =~ s/dns-//;
+		print $iptupdate "*$table\n";
+		foreach my $chain (keys(%{$allchains{$table}})) {
+			print $iptupdate ":tmp-dns-$chain -\n";
 		}
-		close($iptflush);
 		if ( ! open($fh, "<", $heap->{datapath}."/$file")) { $logger->fatal("cannot open < ".$heap->{datapath}."/$file: $!"); exit 1};
 		foreach $line (<$fh>) {
-			$line =~ s/^-A[ \t]/iptables -t $table -A dns-/;
 			print $iptupdate expand_dns({iptupdate=>$iptupdate, line=>$line, replacehostcount=>\%replacehostcount, replacedns=>\%replacedns, depth=>0})
 		}
 		close($fh);
+		print $iptupdate "COMMIT\n";
 	}
   close ($iptupdate);
-  chmod 0555, $heap->{datapath}."/ipt_update";
   INFO "Reload iptables dns $heap->{datapath}/ipt_update";
-  system($heap->{datapath}."/ipt_update");
+	foreach my $table ( keys(%allchains) ) {
+		foreach my $chain ( keys(%{$allchains{$table}}) ) {
+			if ( $chain =~ m/^dns-/ ) {
+				$iptcmd = "/usr/sbin/iptables -t $table -F old-$chain";
+				system("$iptcmd") or die "Can't start $iptcmd: $!";
+				$iptcmd = "/usr/sbin/iptables -t $table -X old-$chain";
+				system("$iptcmd") or die "Can't start $iptcmd: $!";
+			}
+		}
+	}
+  $iptcmd="/usr/sbin/iptables-restore -n ".$heap->{datapath}."/ipt_update";
+	DEBUG "DEBUG: Run $iptcmd";
+	system("$iptcmd") or die "Can't start $iptcmd: $!";
+	# TODO: rename/delete old tables
+	foreach my $table ( keys(%chains) ) {
+		foreach my $chain ( keys(%{$allchains{$table}}) ) {
+			if ( $chain=~ m/^dns-/ ) {
+				$iptcmd="/usr/sbin/iptables -E $chain old-$chain";
+				system("$iptcmd") or die "Can't start $iptcmd: $!";
+				$iptcmd="/usr/sbin/iptables -E tmp-$chain $chain";
+				system("$iptcmd") or die "Can't start $iptcmd: $!";
+			}
+		}
+	}
+	foreach my $table (keys(%allchains) ) {
+		foreach my $chain (keys(%{$allchains{$table}})) {
+			$iptcmd = "/usr/sbin/iptables -t $table -S $chain |";
+			open(my $pipe, "$iptcmd") or die "Can't start $iptcmd: $!";
+			my $n = 0;
+			foreach my $line (<$pipe>) {
+				$n += 1;
+				if ( $line =~ m/-j old-dns-([^ \t\n\r]*)/ ) {
+					$line =~ s/-j old-dns-/-j dns-/;
+					$iptcmd="/usr/sbin/iptables -t $table -R $line";
+					DEBUG "DEBUG: Run $iptcmd";
+					system("$iptcmd") or die "Can't start $iptcmd: $!";
+				}
+			}
+			close($pipe);
+		}
+	}
 }
 
 =head2 firewall_find_dnsnames
