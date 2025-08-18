@@ -101,27 +101,27 @@ HAVE_ULOG=0
 HAVE_NFLOG=0
 HAVE_IPSET=0
 # check availability of modules:
-iptables -N lihas-moduletest
-iptables -A lihas-moduletest $CONNSTATE >/dev/null 2>&1
+iptables -w 120 -N lihas-moduletest
+iptables -w 120 -A lihas-moduletest $CONNSTATE >/dev/null 2>&1
 if iptables-save | egrep -q 'lihas-moduletest.*-m state'; then
   CONNSTATE="-m state --state"
 else
   CONNSTATE="-m conntrack --ctstate"
 fi
 export CONNSTATE
-iptables -A lihas-moduletest -m comment --comment "test" >/dev/null 2>&1
+iptables -w 120 -A lihas-moduletest -m comment --comment "test" >/dev/null 2>&1
 if [ $? -eq 0 ]; then
   HAVE_COMMENT=1
 fi
-iptables -A lihas-moduletest -j LOG --log-prefix 'test' >/dev/null 2>&1
+iptables -w 120 -A lihas-moduletest -j LOG --log-prefix 'test' >/dev/null 2>&1
 if [ $? -eq 0 ]; then
   HAVE_LOG=1
 fi
-iptables -A lihas-moduletest -j ULOG --ulog-prefix 'test' >/dev/null 2>&1
+iptables -w 120 -A lihas-moduletest -j ULOG --ulog-prefix 'test' >/dev/null 2>&1
 if [ $? -eq 0 ]; then
   HAVE_ULOG=1
 fi
-iptables -A lihas-moduletest -j NFLOG --nflog-prefix 'test' >/dev/null 2>&1
+iptables -w 120 -A lihas-moduletest -j NFLOG --nflog-prefix 'test' >/dev/null 2>&1
 if [ $? -eq 0 ]; then
   HAVE_NFLOG=1
 fi
@@ -129,16 +129,16 @@ fi
 if [ type -a ipset > /dev/null ]; then
   ipset create -exist lihas-moduletest bitmap:ip,mac range 127.0.0.0/24 >/dev/null 2>&1
   if [ $? -eq 0 ]; then
-    iptables -A lihas-moduletest -m set --match-set lihas-moduletest src,src >/dev/null 2>&1
+    iptables -w 120 -A lihas-moduletest -m set --match-set lihas-moduletest src,src >/dev/null 2>&1
     if [ $? -eq 0 ]; then
       HAVE_IPSET=1
     fi
-    iptables -F lihas-moduletest >/dev/null 2>&1
+    iptables -w 120 -F lihas-moduletest >/dev/null 2>&1
     ipset destroy lihas-moduletest
   fi
 fi
-iptables -F lihas-moduletest
-iptables -X lihas-moduletest
+iptables -w 120 -F lihas-moduletest
+iptables -w 120 -X lihas-moduletest
 
 # determine LOG target
 if [ $TARGETLOG == "LOG" ] && [ $HAVE_LOG -eq 1 ]; then
@@ -359,8 +359,8 @@ echo COMMIT >> $FILE6
 }
 
 do_stop () {
-  $DOIPV4 && iptables-restore < /etc/firewall.lihas.d/iptables-accept
-  $DOIPV6 && ip6tables-restore < /etc/firewall.lihas.d/iptables-accept
+  $DOIPV4 && iptables-restore -w 120 < /etc/firewall.lihas.d/iptables-accept
+  $DOIPV6 && ip6tables-restore -w 120 < /etc/firewall.lihas.d/iptables-accept
 }
 
 FILE=$TMPDIR/iptables
@@ -385,11 +385,11 @@ case "$1" in
 	    ipset_exit
 	    ipset_init
 	fi
-	if $DOIPV4 && iptables-restore --test $FILE; then
-        	iptables-restore < $FILE
+	if $DOIPV4 && iptables-restore -w 120 --test $FILE; then
+        	iptables-restore -w 120 < $FILE
 	fi
-	if $DOIPV6 && ip6tables-restore --test $FILE6; then
-        	ip6tables-restore < $FILE6
+	if $DOIPV6 && ip6tables-restore -w 120 --test $FILE6; then
+        	ip6tables-restore -w 120 < $FILE6
 	fi
 	$DOIPV4 && [ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
 	$DOIPV6 && [ -x /etc/firewall.lihas.d/fw6_post_rules ] && /etc/firewall.lihas.d/fw6_post_rules
@@ -425,11 +425,11 @@ case "$1" in
 	    ipset_exit
 	    ipset_init
 	fi
-	if $DOIPV4 && iptables-restore --test $FILE; then
-        	iptables-restore < $FILE
+	if $DOIPV4 && iptables-restore -w 120 --test $FILE; then
+        	iptables-restore -w 120 < $FILE
 	fi
-	if $DOIPV6 && ip6tables-restore --test $FILE6; then
-        	ip6tables-restore < $FILE6
+	if $DOIPV6 && ip6tables-restore -w 120 --test $FILE6; then
+        	ip6tables-restore -w 120 < $FILE6
 	fi
 	$DOIPV4 && [ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules
 	$DOIPV6 && [ -x /etc/firewall.lihas.d/fw6_post_rules ] && /etc/firewall.lihas.d/fw6_post_rules
@@ -450,11 +450,11 @@ case "$1" in
 	    ipset_exit
 	    ipset_init
 	fi
-	if $DOIPV4 && iptables-restore --test $FILE; then
-        	iptables-restore < $FILE
+	if $DOIPV4 && iptables-restore -w 120 --test $FILE; then
+        	iptables-restore -w 120 < $FILE
 	fi
-	if $DOIPV6 && ip6tables-restore --test $FILE6; then
-        	ip6tables-restore < $FILE6
+	if $DOIPV6 && ip6tables-restore -w 120 --test $FILE6; then
+        	ip6tables-restore -w 120 < $FILE6
 	fi
 	$DOIPV4 && ( [ -x /etc/firewall.lihas.d/fw_post_rules ] && /etc/firewall.lihas.d/fw_post_rules )
 	$DOIPV6 && ( [ -x /etc/firewall.lihas.d/fw6_post_rules ] && /etc/firewall.lihas.d/fw6_post_rules )
