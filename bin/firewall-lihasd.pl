@@ -18,8 +18,10 @@
 # Requirements: libxml-application-config-perl liblog-log4perl-perl liblog-dispatch-perl
 
 BEGIN {
-  $DEBUG=0;
-  $DAEMON=1;
+  my $DEBUG=0;
+  my $DAEMON=1;
+	use strict;
+	use warnings;
   use Getopt::Long qw(GetOptions);
   Getopt::Long::Configure qw(gnu_getopt);
   use Data::Dumper;
@@ -151,12 +153,11 @@ sub expand_dns {
   my ($arg_ref) = @_;
   my $line = $arg_ref->{line};
   my $depth = $arg_ref->{depth};
-  my $iptupdate = $arg_ref->{iptupdate};
   my %replacedns = %{$arg_ref->{replacedns}};
   my %replacehostcount = %{$arg_ref->{replacehostcount}};
-  my $outline='';
+  my $outline;
 
-  $line =~ s/-A (in|out|fwd|post|pre)/-A tmp-dns-$1/;
+  $line =~ s/-A (in|out|fwd|post|pre)/-A dns-$1/;
   if ( $line =~ m/([sd][ \t]+)dns-([a-zA-Z0-9_\.-]+)\b/ ) {
     my $name = $2;
     if ( not defined $replacedns{$name}{count} ) {
@@ -165,7 +166,7 @@ sub expand_dns {
     foreach my $ip (values(@{$replacedns{$name}{ips}})) {
       my $thisline = $line;
       $thisline =~ s/([sd][ \t]+)dns-$name/$1$ip/;
-      $outline .= expand_dns({iptupdate=>$iptupdate, line=>$thisline, replacehostcount=>\%replacehostcount, replacedns=>\%replacedns, depth=>$depth+1})
+      $outline .= expand_dns({line=>$thisline, replacehostcount=>\%replacehostcount, replacedns=>\%replacedns, depth=>$depth+1});
     }
     return $outline;
   } else {
@@ -181,7 +182,7 @@ sub firewall_reload_dns {
   my %replacedns;
   my %replacehostcount;
   my ($hostname, $ip, $table);
-  my ($dh, $fh, $line, $iptupdate);
+  my ($dh, $fh);
   my $logger = Log::Log4perl->get_logger('firewalld.reload.dns');
   if (! Log::Log4perl::initialized()) { $logger->warn("uninit"); }
 
@@ -199,81 +200,38 @@ sub firewall_reload_dns {
     push(@{$replacedns{$hostname}{ips}}, "$ip");
     $replacedns{$hostname}{count}+=1;
   }
-  if ( -e $heap->{datapath}."/ipt_update" ) {
-    unlink $heap->{datapath}."/ipt_update" or $logger->warn("Could not unlink ".$heap->{datapath}."/ipt_update: $!");
-  }
-  if ( ! open($iptupdate, ">", $heap->{datapath}."/ipt_update")) { $logger->fatal("cannot open < ".$heap->{datapath}."/ipt_update: $!"); exit 1;};
-
   if ( ! opendir($dh, $heap->{datapath}) ) { $logger->fatal("can't opendir ".$heap->{datapath}.": $!\n"); exit 1; };
-  my %allchains;
-  $iptcmd = "/usr/sbin/iptables-save |";
-  open(my $pipe, "$iptcmd") or die "Can't start $iptcmd: $!";
-  foreach $line (<$pipe>) {
-    if ( $line =~ m/^\*([^ \t\n\r]*)/ ) {
-      $table=$1;
-    } elsif ( $line =~ m/^:([^ \t\n\r]*)/ ) {
-      $allchains{$table}{$1} = 1;
-    }
-  }
-  close($pipe);
-  my @files = grep { /^dns-/ && -f $heap->{datapath}."/$_" } readdir($dh);
+	my @dnsfiles = grep { /^dns-/ && -f $heap->{datapath}."/$_" } readdir($dh);
   closedir $dh;
-  my %chains;
-  foreach my $file (@files) {
-    $table = $file;
-    $table =~ s/dns-//;
-    print $iptupdate "*$table\n";
-    foreach my $chain (keys(%{$allchains{$table}})) {
-      print $iptupdate ":tmp-dns-$chain -\n";
+  my %allchains;
+	my $ruleset;
+  $iptcmd = "/usr/sbin/iptables-save |";
+  open(my $fhiptsave, "$iptcmd") or die "Can't start $iptcmd: $!";
+  foreach my $iptsaveline (<$fhiptsave>) {
+    if ( $iptsaveline =~ m/^\*([^ \t\n\r]*)/ ) {
+      $table=$1;
+    } elsif ( $iptsaveline =~ m/^:([^ \t\n\r]*)/ ) {
+      $allchains{$table}{$1} = 1;
+    } elsif ( $iptsaveline =~ m/^COMMIT/ ) {
+			# Add DNS-dependent rules here
+			foreach my $file (grep { /^dns-$table$/ } @dnsfiles) {
+  		  if ( ! open($fh, "<", $heap->{datapath}."/$file")) { $logger->fatal("cannot open < ".$heap->{datapath}."/$file: $!"); exit 1};
+  		  foreach my $line (<$fh>) {
+  		    my $expandline = expand_dns({line=>$line, replacehostcount=>\%replacehostcount, replacedns=>\%replacedns, depth=>0});
+					$ruleset .= $expandline;
+  		  }
+  		  close($fh);
+  		}
     }
-    if ( ! open($fh, "<", $heap->{datapath}."/$file")) { $logger->fatal("cannot open < ".$heap->{datapath}."/$file: $!"); exit 1};
-    foreach $line (<$fh>) {
-      print $iptupdate expand_dns({iptupdate=>$iptupdate, line=>$line, replacehostcount=>\%replacehostcount, replacedns=>\%replacedns, depth=>0})
-    }
-    close($fh);
-    print $iptupdate "COMMIT\n";
+		$ruleset .= $iptsaveline;
   }
-  close ($iptupdate);
-  INFO "Reload iptables dns $heap->{datapath}/ipt_update";
-  foreach my $table ( keys(%allchains) ) {
-    foreach my $chain ( keys(%{$allchains{$table}}) ) {
-      if ( $chain =~ m/^dns-/ ) {
-        $iptcmd = "/usr/sbin/iptables -t $table -F old-$chain";
-        system("$iptcmd") or die "Can't start $iptcmd: $!";
-        $iptcmd = "/usr/sbin/iptables -t $table -X old-$chain";
-        system("$iptcmd") or die "Can't start $iptcmd: $!";
-      }
-    }
-  }
-  $iptcmd="/usr/sbin/iptables-restore -n ".$heap->{datapath}."/ipt_update";
-  system("$iptcmd") or die "Can't start $iptcmd: $!";
-  # TODO: rename/delete old tables
-  foreach my $table ( keys(%chains) ) {
-    foreach my $chain ( keys(%{$allchains{$table}}) ) {
-      if ( $chain=~ m/^dns-/ ) {
-        $iptcmd="/usr/sbin/iptables -E $chain old-$chain";
-        system("$iptcmd") or die "Can't start $iptcmd: $!";
-        $iptcmd="/usr/sbin/iptables -E tmp-$chain $chain";
-        system("$iptcmd") or die "Can't start $iptcmd: $!";
-      }
-    }
-  }
-  foreach my $table (keys(%allchains) ) {
-    foreach my $chain (keys(%{$allchains{$table}})) {
-      $iptcmd = "/usr/sbin/iptables -t $table -S $chain |";
-      open(my $pipe, "$iptcmd") or die "Can't start $iptcmd: $!";
-      my $n = 0;
-      foreach my $line (<$pipe>) {
-        $n += 1;
-        if ( $line =~ m/-j old-dns-([^ \t\n\r]*)/ ) {
-          $line =~ s/-j old-dns-/-j dns-/;
-          $iptcmd="/usr/sbin/iptables -t $table -R $line";
-          system("$iptcmd") or die "Can't start $iptcmd: $!";
-        }
-      }
-      close($pipe);
-    }
-  }
+  close($fhiptsave);
+	DEBUG "/usr/sbin/iptables-restore start";
+  $iptcmd="| /usr/sbin/iptables-restore";
+  open(my $fhiptrestore, "$iptcmd") or die "Can't start $iptcmd: $!";
+	print $fhiptrestore $ruleset;
+	close($fhiptrestore);
+	DEBUG "/usr/sbin/iptables-restore end";
 }
 
 =head2 firewall_find_dnsnames
