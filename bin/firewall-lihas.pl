@@ -1114,7 +1114,7 @@ if ($fw_privclients) {
 		}
 		fw_rejectclients($dbh, $iface, "$configpath/$interfacedir/reject", $commentchain);
 	}
-	print "Adding priviledged Clients\n";
+	print "Adding privileged Clients\n";
 	foreach my $iface (keys(%{$ifaces{logical}})) {
 		my $interfacedir="interface-$iface";
 		-s "$configpath/$interfacedir/privclients" || next;
