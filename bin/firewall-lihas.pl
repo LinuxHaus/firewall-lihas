@@ -344,28 +344,6 @@ sub fw_mark {
     }
   }
   close $markfile;
-	my $dbh = $_[0];
-	my $iface = $_[1];
-	my $file = $_[2];
-	my $commentchain = $_[3];
-	my $outline = "";
-	open(my $markfile, "<", $file) or die "cannot open < $file: $!";
-	foreach my $line (<$markfile>) {
-		$line =~ m/^#/ && next;
-		$line =~ m/^[ \t]*$/ && next;
-		$line =~ s/#.*//;
-		$line = expand_iface_placeholder($line, $iface);
-		if ($line =~ /^include[\s]+([^\s]+)/) {
-			$commentchain .= " " . firewall_comment_add_key($dbh,"$1");
-			fw_mark($dbh, $iface, "$configpath/$1",$commentchain);
-		} elsif ($line =~ /^dhcpd/) {
-			print $FILEfilter "-A INPUT -i $iface -p udp --sport 68 --dport 67 -j ACCEPT\n";
-			print $FILEfilter "-A OUTPUT -o $iface -p udp --sport 67 --dport 68 -j ACCEPT\n";
-		} elsif ($line =~ /^natreflect/) {
-			print $FILEmangle "-A FORWARD -i $iface -o $iface -j CONNMARK --set-xmark 0x80000000/0x80000000\n";
-		}
-	}
-	close $markfile;
 }
 
 =head2 fw_nonat
