@@ -1,3 +1,16 @@
+Mi 2. Sep 2026
+- Interfacebezogene Regeln und Includes unterstuetzen den Platzhalter @IFACE@.
+  Er wird vor der Gruppenexpansion durch den aktuellen Interface-Namen ersetzt
+  und funktioniert auch in verschachtelten Includes. Ein gemeinsames Include
+  kann dadurch zum Beispiel hostgroup-@IFACE@-clients verwenden, ohne auf einem
+  anderen Interface versehentlich die Clients des ersten Interfaces
+  freizugeben.
+- @IFACE@ kann auch im Include-Pfad verwendet werden. Bestehende Zeilen ohne
+  Platzhalter behalten unveraendert ihr bisheriges Verhalten. Interface-Namen
+  werden vor der Ersetzung validiert.
+- Tests decken Regelinhalt, Include-Pfad, Rueckwaertskompatibilitaet und die
+  Ablehnung ungueltiger Interface-Namen ab.
+
 Do 25. Apr 10:55:49 CEST 2013, are
 - reads /etc/default/firewall
 - firwall-lihasd.pl: added, needs some perl libraries to run

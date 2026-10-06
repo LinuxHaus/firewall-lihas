@@ -72,6 +72,7 @@ $FILEnat->fdopen(6,"w");
 $FILEmangle->fdopen(7,"w");
 
 use XML::Application::Config;
+use LiHAS::Firewall::ConfigLine qw(expand_iface_placeholder);
 # use Test::More skip_all => "Derzeit keine Tests";
 use lib "/etc/firewall.lihas.d/lib";
 
@@ -331,6 +332,7 @@ sub fw_mark {
     $line =~ m/^#/ && next;
     $line =~ m/^[ \t]*$/ && next;
     $line =~ s/#.*//;
+  	$line = expand_iface_placeholder($line, $iface);
     if ($line =~ /^include[\s]+([^\s]+)/) {
       $commentchain .= " " . firewall_comment_add_key($dbh,"$1");
       fw_mark($dbh, $iface, "$configpath/$1",$commentchain);
@@ -361,6 +363,7 @@ sub fw_nonat {
     $line =~ m/^#/ && next;
     $line =~ m/^[ \t]*$/ && next;
     $line =~ s/#.*//;
+  	$line = expand_iface_placeholder($line, $iface);
     if ($line =~ /^include[\s]+([^\s]+)/) {
       $commentchain .= " " . firewall_comment_add_key($dbh,"$1");
       fw_nonat($dbh, $iface, "$configpath/$1",$commentchain);
@@ -416,7 +419,8 @@ sub fw_dnat {
     $line =~ m/^#/ && next;
     $line =~ m/^[ \t]*$/ && next;
     $line =~ s/#.*//;
-    if ($line =~ /^include[\s]+([^\s]+)/) {
+  	$line = expand_iface_placeholder($line, $iface);
+	if ($line =~ /^include[\s]+([^\s]+)/) {
       $commentchain .= " " . firewall_comment_add_key($dbh,"$1");
       fw_dnat($dbh, $iface, "$configpath/$1", $commentchain);
     } else {
@@ -484,6 +488,7 @@ sub fw_snat {
     $line =~ m/^#/ && next;
     $line =~ m/^[ \t]*$/ && next;
     $line =~ s/#.*//;
+  	$line = expand_iface_placeholder($line, $iface);
     if ($line =~ /^include[\s]+([^\s]+)/) {
       $commentchain .= " " . firewall_comment_add_key($dbh,"$1");
       fw_snat($dbh, $iface, "$configpath/$1", $commentchain);
@@ -549,6 +554,7 @@ sub fw_masquerade {
     $line =~ m/^#/ && next;
     $line =~ m/^[ \t]*$/ && next;
     $line =~ s/#.*//;
+  	$line = expand_iface_placeholder($line, $iface);
     if ($line =~ /^include[\s]+([^\s]+)/) {
       $commentchain .= " " . firewall_comment_add_key($dbh,"$1");
       fw_masquerade($dbh, $iface, "$configpath/$1", $commentchain);
@@ -600,6 +606,7 @@ sub fw_nologclients {
     $line =~ m/^#/ && next;
     $line =~ m/^[ \t]*$/ && next;
     $line =~ s/#.*//;
+  	$line = expand_iface_placeholder($line, $iface);
     if ($line =~ /^include[\s]+([^\s]+)/) {
       $commentchain .= " " . firewall_comment_add_key($dbh,"$1");
       fw_nologclients($dbh, $iface, "$configpath/$1", $commentchain);
@@ -658,7 +665,8 @@ sub fw_rejectclients {
     $line =~ m/^#/ && next;
     $line =~ m/^[ \t]*$/ && next;
     $line =~ s/#.*//;
-    if ($line =~ /^include[\s]+([^\s]+)/) {
+  	$line = expand_iface_placeholder($line, $iface);
+	if ($line =~ /^include[\s]+([^\s]+)/) {
       $commentchain .= " " . firewall_comment_add_key($dbh,"$1");
       fw_rejectclients($dbh, $iface, "$configpath/$1", $commentchain);
     } else {
@@ -716,7 +724,8 @@ sub fw_privclients {
     $line =~ m/^#/ && next;
     $line =~ s/#.*//;
     $line =~ m/^\s*$/ && next;
-    if ($line =~ /^include[\s]+([^\s]+)/) {
+    $line = expand_iface_placeholder($line, $iface);
+	if ($line =~ /^include[\s]+([^\s]+)/) {
       $commentchain .= " " . firewall_comment_add_key($dbh,"$1");
       fw_privclients($dbh, $iface, "$configpath/$1", $commentchain);
     } else {

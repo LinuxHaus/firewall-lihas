@@ -69,6 +69,27 @@ darin finden die relevanten Dinge statt.
        include DATEINAME
     enthalten.
 
+  - In interfacebezogenen Regeln und Includes steht `@IFACE@` fuer den Namen
+    des Interface-Verzeichnisses ohne das Praefix `interface-`. Der Platzhalter
+    wird vor der Gruppenexpansion ersetzt und gilt auch in verschachtelten
+    Includes. Damit kann dieselbe Include-Datei sicher interfaceabhaengige
+    Hostgruppen referenzieren.
+
+    Beispiel fuer `include/common-privclients`:
+
+        hostgroup-@IFACE@-clients hostgroup-service tcp 443
+
+    Wird diese Datei aus `interface-eth0/privclients` eingebunden, verwendet die
+    Regel `hostgroup-eth0-clients`; unter `interface-eth1/privclients` wird
+    entsprechend `hostgroup-eth1-clients` verwendet. Der Platzhalter kann auch
+    im Include-Pfad stehen, zum Beispiel `include include/common-@IFACE@`.
+
+    Unterstuetzt wird der Platzhalter in mark, nonat, dnat, snat, masquerade,
+    nolog, reject und privclients. Zeilen ohne `@IFACE@` bleiben unveraendert.
+    Der Interface-Name muss aus Buchstaben, Ziffern, Punkt, Unterstrich oder
+    Bindestrich bestehen; andernfalls bricht die Generierung mit einer klaren
+    Fehlermeldung ab.
+
   - groups/hostgroup-* koennen statt Rechner-/Netzadressen auch
     dns-HOSTNAME
     z.B. dns-www.lihas.de enthalten.
@@ -154,4 +175,3 @@ SNAT und Masquerading werden am ausgehenden Interface konfiguriert.
 Externe Programme:
 firewall-lihasd.pl - DNS in der Firewallkonfiguration mitsamt Updates
 firewall-lihas-watchdog-cron.sh - prueft ob die alternative Routingtabellen aktuell sind und startete ggf. die Firewall neu
-
